@@ -15,7 +15,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
-	"github.com/vitalem/logger_service/pkg/logger"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )

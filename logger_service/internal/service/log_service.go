@@ -2,8 +2,9 @@ package service
 
 import (
 	"fmt"
-	"logger_service/internal/models"
 	"time"
+
+	"github.com/printprince/vitalem/logger_service/internal/models"
 )
 
 type ElasticsearchClient interface {

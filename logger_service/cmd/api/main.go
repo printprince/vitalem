@@ -3,13 +3,14 @@ package main
 import (
 	"fmt"
 	"log/slog"
-	"logger_service/internal/config"
-	"logger_service/internal/handlers"
-	"logger_service/internal/middleware"
-	"logger_service/internal/service"
-	"logger_service/pkg/elasticsearch"
 	"net/http"
 	"os"
+
+	"github.com/printprince/vitalem/logger_service/internal/config"
+	"github.com/printprince/vitalem/logger_service/internal/handlers"
+	"github.com/printprince/vitalem/logger_service/internal/middleware"
+	"github.com/printprince/vitalem/logger_service/internal/service"
+	"github.com/printprince/vitalem/logger_service/pkg/elasticsearch"
 
 	"github.com/labstack/echo/v4"
 	echoMiddleware "github.com/labstack/echo/v4/middleware"

@@ -1,4 +1,4 @@
-module github.com/vitalem/logger_service
+module github.com/printprince/vitalem/logger_service
 
 go 1.24.2
 

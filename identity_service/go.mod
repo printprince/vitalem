@@ -5,14 +5,12 @@ go 1.24.2
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/labstack/echo/v4 v4.13.3
-	github.com/vitalem/logger_service v0.0.0
+	github.com/printprince/vitalem/logger_service
 	golang.org/x/crypto v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.26.1
 )
-
-replace github.com/vitalem/logger_service => ../logger_service
 
 require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect

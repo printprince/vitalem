@@ -2,9 +2,10 @@ package handlers
 
 import (
 	"log/slog"
-	"logger_service/internal/models"
-	"logger_service/internal/service"
 	"net/http"
+
+	"github.com/printprince/vitalem/logger_service/internal/models"
+	"github.com/printprince/vitalem/logger_service/internal/service"
 
 	"github.com/labstack/echo/v4"
 )

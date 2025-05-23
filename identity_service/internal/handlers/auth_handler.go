@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/vitalem/logger_service/pkg/logger"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 
 	"github.com/labstack/echo/v4"
 )

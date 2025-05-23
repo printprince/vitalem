@@ -2,8 +2,9 @@ package repository
 
 import (
 	"encoding/json"
-	"logger_service/internal/models"
 	"time"
+
+	"github.com/printprince/vitalem/logger_service/internal/models"
 
 	"gorm.io/gorm"
 )
