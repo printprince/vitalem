@@ -1,0 +1,15 @@
+server:
+  host: 0.0.0.0
+  port: 8801 # Port for the identity_service
+
+database:
+  db_host: localhost
+  db_port: 5433
+  db_user: postgres
+  db_pass: 61324
+  db_name: vitalem_db
+  db_ssl_mode: disable
+
+jwt:
+  jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
+  jwt_expire: 24
