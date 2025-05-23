@@ -1,7 +1,8 @@
 filebeat.inputs:
-- type: container
-  paths:
-    - '/var/lib/docker/containers/*/*.log'
+- type: docker
+  containers:
+    ids:
+      - "*"
   json.keys_under_root: true
   json.message_key: message
   json.add_error_key: true

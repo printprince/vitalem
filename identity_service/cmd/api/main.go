@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -30,8 +31,16 @@ func main() {
 		log.Fatalf("Ошибка получения конфигураций: %v", err)
 	}
 
-	// Инициализируем logger клиент для отправки логов в logger_service, если указан URL
-	loggerServiceURL := os.Getenv("LOGGER_SERVICE_URL")
+	// Инициализируем logger клиент для отправки логов в logger_service
+	// Сначала проверяем настройки в конфигурации
+	loggerServiceURL := ""
+	if cfg.Logging != nil && cfg.Logging.ServiceURL != "" {
+		loggerServiceURL = cfg.Logging.ServiceURL
+	} else {
+		// Если нет в конфигурации, проверяем переменную окружения
+		loggerServiceURL = os.Getenv("LOGGER_SERVICE_URL")
+	}
+
 	if loggerServiceURL != "" {
 		// Создаем клиент логгера с асинхронной отправкой (3 воркера)
 		appLogger = logger.NewClient(
@@ -128,20 +137,39 @@ func setupGracefulShutdown(logger *logger.Client) {
 
 // logInfo отправляет информационный лог
 func logInfo(message string, metadata map[string]interface{}) {
+	// Отправляем в logger_service
 	if appLogger != nil {
 		if err := appLogger.Info(message, metadata); err != nil {
 			log.Printf("Ошибка отправки лога: %v", err)
 		}
 	}
-	log.Println(message)
+
+	// Проверяем, нужно ли выводить в консоль
+	cfg := config.GetConfig()
+	if cfg != nil && cfg.Logging != nil && cfg.Logging.ConsoleLevel != "" {
+		consoleLevel := strings.ToLower(cfg.Logging.ConsoleLevel)
+		if consoleLevel == "debug" || consoleLevel == "info" {
+			log.Println(message)
+		}
+	} else {
+		// Если нет конфигурации, выводим по умолчанию
+		log.Println(message)
+	}
 }
 
 // logError отправляет лог об ошибке
 func logError(message string, metadata map[string]interface{}) {
+	// Отправляем в logger_service
 	if appLogger != nil {
 		if err := appLogger.Error(message, metadata); err != nil {
 			log.Printf("Ошибка отправки лога: %v", err)
 		}
 	}
-	log.Printf("ОШИБКА: %s", message)
+
+	// Ошибки всегда выводим в консоль, если уровень не задан или включает ошибки
+	cfg := config.GetConfig()
+	if cfg == nil || cfg.Logging == nil || cfg.Logging.ConsoleLevel == "" ||
+		strings.ToLower(cfg.Logging.ConsoleLevel) != "none" {
+		log.Printf("ОШИБКА: %s", message)
+	}
 }

@@ -15,6 +15,12 @@ services:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
 
   # Сервис аутентификации
   identity_service:
@@ -33,10 +39,13 @@ services:
     ports:
       - "8801:8801"
     depends_on:
-      - postgres
-      - logger_service
+      postgres:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
     networks:
       - app-network
+    restart: always
 
   # ELK стек
   elasticsearch:
@@ -51,7 +60,13 @@ services:
       - elasticsearch_data:/usr/share/elasticsearch/data
     networks:
       - app-network
-  
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: always
+
   kibana:
     image: docker.elastic.co/kibana/kibana:7.17.0
     container_name: kibana
@@ -60,21 +75,24 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - app-network
+    restart: always
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:7.17.0
     volumes:
       - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
     user: root
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - app-network
+    restart: always
 
   # Сервис логирования
   logger_service:
@@ -87,9 +105,11 @@ services:
     ports:
       - "8802:8802"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - app-network
+    restart: always
 
 networks:
   app-network:

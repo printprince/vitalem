@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/printprince/vitalem/logger_service/internal/config"
 	"github.com/printprince/vitalem/logger_service/internal/handlers"
@@ -18,27 +19,49 @@ import (
 
 // LoggerService - это сервис для логирования событий в наших микросервисах
 func main() {
+	// Загружаем конфигурации
+	cfg, err := config.LoadConfig("./config.yaml")
+	if err != nil {
+		slog.Error("Failed to load config", "error", err)
+		os.Exit(1)
+	}
+
+	// Настраиваем уровень логирования
+	logLevel := slog.LevelInfo // По умолчанию INFO
+	if cfg.Logging != nil && cfg.Logging.Level != "" {
+		switch strings.ToLower(cfg.Logging.Level) {
+		case "debug":
+			logLevel = slog.LevelDebug
+		case "info":
+			logLevel = slog.LevelInfo
+		case "warn":
+			logLevel = slog.LevelWarn
+		case "error":
+			logLevel = slog.LevelError
+		}
+	}
+
 	// Инициализируем логгер
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:     slog.LevelDebug,
+		Level:     logLevel,
 		AddSource: true,
 	}))
 	logger.Info("Starting logger service")
 
-	// Загружаем конфигурации
-	cfg, err := config.LoadConfig("./config.yaml")
-	if err != nil {
-		logger.Error("Failed to load config", "error", err)
-		os.Exit(1)
-	}
-
 	// Инициализируем компоненты приложения
 	logService := service.NewLogService()
 
-	// Берем переменную окружения для es, если нету то не запускаем приложение
-	esURL := os.Getenv("ELASTICSEARCH_URL")
+	// Получаем URL для Elasticsearch
+	esURL := ""
+	if cfg.Logging != nil && cfg.Logging.ElasticsearchURL != "" {
+		esURL = cfg.Logging.ElasticsearchURL
+	} else {
+		// Если нет в конфигурации, проверяем переменную окружения
+		esURL = os.Getenv("ELASTICSEARCH_URL")
+	}
+
 	if esURL == "" {
-		logger.Error("ELASTICSEARCH_URL environment variable not set")
+		logger.Error("Elasticsearch URL not set in config or environment")
 		os.Exit(1)
 	}
 

@@ -3,8 +3,8 @@ server:
   port: 8801 # Port for the identity_service
 
 database:
-  db_host: localhost
-  db_port: 5433
+  db_host: postgres
+  db_port: 5432
   db_user: postgres
   db_pass: 61324
   db_name: vitalem_db
@@ -13,3 +13,8 @@ database:
 jwt:
   jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
   jwt_expire: 24
+
+logging:
+  console_level: error  # Только ошибки будут выводиться в консоль
+  service_level: info   # Все информационные сообщения будут отправляться в logger_service
+  service_url: http://logger_service:8802

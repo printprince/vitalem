@@ -4,8 +4,15 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"sync"
 
 	"gopkg.in/yaml.v3"
+)
+
+// Глобальная переменная для хранения конфигурации
+var (
+	config *Config
+	once   sync.Once
 )
 
 type Config struct {
@@ -25,6 +32,14 @@ type Config struct {
 		Secret string `yaml:"jwt_secret"`
 		Expire int    `yaml:"jwt_expire"`
 	} `yaml:"jwt"`
+	Logging *LoggingConfig `yaml:"logging"`
+}
+
+// LoggingConfig содержит настройки логирования
+type LoggingConfig struct {
+	ConsoleLevel string `yaml:"console_level"` // Уровень логов для консоли (error, warn, info, debug)
+	ServiceLevel string `yaml:"service_level"` // Уровень логов для logger_service
+	ServiceURL   string `yaml:"service_url"`   // URL logger_service
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -35,60 +50,72 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	// Разбор YAML
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("error parsing YAML: %w", err)
 	}
 
 	// Переопределение значений из переменных окружения
 	// Server
 	if host := os.Getenv("SERVER_HOST"); host != "" {
-		config.Server.Host = host
+		cfg.Server.Host = host
 	}
 
 	if portStr := os.Getenv("SERVER_PORT"); portStr != "" {
 		if port, err := strconv.Atoi(portStr); err == nil {
-			config.Server.Port = port
+			cfg.Server.Port = port
 		}
 	}
 
 	// Database
 	if dbHost := os.Getenv("DB_HOST"); dbHost != "" {
-		config.Database.Host = dbHost
+		cfg.Database.Host = dbHost
 	}
 
 	if dbPortStr := os.Getenv("DB_PORT"); dbPortStr != "" {
 		if dbPort, err := strconv.Atoi(dbPortStr); err == nil {
-			config.Database.Port = dbPort
+			cfg.Database.Port = dbPort
 		}
 	}
 
 	if dbUser := os.Getenv("DB_USER"); dbUser != "" {
-		config.Database.User = dbUser
+		cfg.Database.User = dbUser
 	}
 
 	if dbPass := os.Getenv("DB_PASS"); dbPass != "" {
-		config.Database.Password = dbPass
+		cfg.Database.Password = dbPass
 	}
 
 	if dbName := os.Getenv("DB_NAME"); dbName != "" {
-		config.Database.DBName = dbName
+		cfg.Database.DBName = dbName
 	}
 
 	if dbSSLMode := os.Getenv("DB_SSL_MODE"); dbSSLMode != "" {
-		config.Database.SSLMode = dbSSLMode
+		cfg.Database.SSLMode = dbSSLMode
 	}
 
 	// JWT
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		config.JWT.Secret = jwtSecret
+		cfg.JWT.Secret = jwtSecret
 	}
 
-	if jwtExpireStr := os.Getenv("JWT_EXPIRE"); jwtExpireStr != "" {
-		if jwtExpire, err := strconv.Atoi(jwtExpireStr); err == nil {
-			config.JWT.Expire = jwtExpire
+	// Logging
+	if loggerURL := os.Getenv("LOGGER_SERVICE_URL"); loggerURL != "" {
+		if cfg.Logging == nil {
+			cfg.Logging = &LoggingConfig{}
 		}
+		cfg.Logging.ServiceURL = loggerURL
 	}
 
-	return &config, nil
+	// Сохраняем конфигурацию в глобальную переменную
+	once.Do(func() {
+		config = &cfg
+	})
+
+	return &cfg, nil
+}
+
+// GetConfig возвращает текущую конфигурацию
+func GetConfig() *Config {
+	return config
 }
