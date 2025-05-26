@@ -50,8 +50,9 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token claims")
 			}
 
-			// Преобразуем ID пользователя из токена в UUID
+			// Получаем ID пользователя и преобразуем его в UUID
 			var userID uuid.UUID
+
 			// Проверяем тип ID пользователя в токене
 			switch id := claims["user_id"].(type) {
 			case string:
@@ -64,7 +65,7 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid user_id type in token")
 			}
 
-			// сохраняем ID, email и роль в контексте
+			// Сохраняем данные в контексте
 			c.Set("user_id", userID)
 			c.Set("role", claims["role"])
 			c.Set("email", claims["email"])

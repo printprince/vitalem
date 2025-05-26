@@ -22,6 +22,27 @@ services:
       retries: 5
     restart: always
 
+  # RabbitMQ для обмена сообщениями между сервисами
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: vitalem_rabbitmq
+    ports:
+      - "5672:5672"   # AMQP порт
+      - "15672:15672" # Management UI порт
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
   # Сервис аутентификации
   identity_service:
     build:
@@ -36,10 +57,18 @@ services:
       - DB_NAME=vitalem_db
       - DB_SSL_MODE=disable
       - LOGGER_SERVICE_URL=http://logger_service:8802
+      - RMQ_HOST=rabbitmq
+      - RMQ_PORT=5672
+      - RMQ_USER=guest
+      - RMQ_PASS=guest
+      - RMQ_EXCHANGE=vitalem
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
     ports:
       - "8801:8801"
     depends_on:
       postgres:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
       logger_service:
         condition: service_started
@@ -111,6 +140,42 @@ services:
       - app-network
     restart: always
 
+  # Сервис специалистов (врачей)
+  specialist_service:
+    build:
+      context: ./specialist_service
+      dockerfile: Dockerfile
+    container_name: specialist_service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=61324
+      - DB_NAME=vitalem_db
+      - DB_SSL_MODE=disable
+      - LOGGER_SERVICE_URL=http://logger_service:8802
+      - RMQ_HOST=rabbitmq
+      - RMQ_PORT=5672
+      - RMQ_USER=guest
+      - RMQ_PASS=guest
+      - RMQ_EXCHANGE=vitalem
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - TZ=Europe/Moscow
+    ports:
+      - "8803:8803"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
+      identity_service:
+        condition: service_started
+    networks:
+      - app-network
+    restart: always
+
 networks:
   app-network:
     driver: bridge
@@ -118,3 +183,4 @@ networks:
 volumes:
   postgres_data:
   elasticsearch_data:
+  rabbitmq_data:

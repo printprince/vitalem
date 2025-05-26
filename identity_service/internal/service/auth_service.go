@@ -1,28 +1,37 @@
 package service
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
-	"golang.org/x/crypto/bcrypt"
 	"identity_service/internal/models"
 	"identity_service/internal/repository"
 	"log"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
 	userRepository *repository.UserRepository
+	messageService MessageService
 	jwtSecret      string
 	jwtExpire      int
 }
 
+// NewAuthService создает новый сервис аутентификации
 func NewAuthService(userRepository *repository.UserRepository, jwtSecret string, jwtExpire int) *AuthService {
 	return &AuthService{
 		userRepository: userRepository,
 		jwtSecret:      jwtSecret,
 		jwtExpire:      jwtExpire,
 	}
+}
+
+// SetMessageService устанавливает сервис сообщений
+func (s *AuthService) SetMessageService(messageService MessageService) {
+	s.messageService = messageService
 }
 
 // Register - сервис создания аккаунта
@@ -49,7 +58,28 @@ func (s *AuthService) Register(email, password, role string) error {
 
 	// Создаем пользователя
 	log.Printf("New user registered with email: %s, role: %s", email, role)
-	return s.userRepository.Create(user)
+	if err := s.userRepository.Create(user); err != nil {
+		return err
+	}
+
+	// Если сервис сообщений доступен, публикуем событие создания пользователя
+	if s.messageService != nil {
+		// Создаем событие
+		event := &models.UserCreatedEvent{
+			UserID: user.ID.String(),
+			Email:  email,
+			Role:   role,
+		}
+
+		// Публикуем событие
+		ctx := context.Background()
+		if err := s.messageService.PublishUserCreated(ctx, event); err != nil {
+			log.Printf("Failed to publish user created event: %v", err)
+			// Не возвращаем ошибку, так как пользователь уже создан
+		}
+	}
+
+	return nil
 }
 
 // Login - сервис авторизации

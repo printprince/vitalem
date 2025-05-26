@@ -1,0 +1,34 @@
+server:
+  host: 0.0.0.0
+  port: 8803 # Port for the specialist_service
+  read_timeout: 10s
+  write_timeout: 10s
+  shutdown_timeout: 5s
+
+database:
+  db_host: postgres
+  db_port: 5432
+  db_user: postgres
+  db_pass: 61324
+  db_name: vitalem_db
+  db_ssl_mode: disable
+  db_schema: public
+
+rabbitmq:
+  rmq_host: rabbitmq
+  rmq_port: 5672
+  rmq_user: guest
+  rmq_pass: guest
+  rmq_exchange: vitalem
+  rmq_doctor_queue: doctor.events
+  rmq_user_queue: user.events
+  rmq_routing_key: doctor.created
+
+jwt:
+  jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
+  jwt_expire: 24
+
+logging:
+  console_level: error   # Уровень логов для консоли
+  service_level: info   # Уровень логов для logger_service
+  service_url: http://logger_service:8802 

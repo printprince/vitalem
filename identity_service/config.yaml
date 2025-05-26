@@ -14,6 +14,15 @@ jwt:
   jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
   jwt_expire: 24
 
+rabbitmq:
+  rmq_host: rabbitmq
+  rmq_port: 5672
+  rmq_user: guest
+  rmq_pass: guest
+  rmq_exchange: vitalem
+  rmq_user_queue: user.events
+  rmq_routing_key: user.created
+
 logging:
   console_level: error  # Только ошибки будут выводиться в консоль
   service_level: info   # Все информационные сообщения будут отправляться в logger_service

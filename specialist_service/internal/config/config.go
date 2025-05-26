@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -17,8 +18,11 @@ var (
 
 type Config struct {
 	Server struct {
-		Host string `yaml:"host"`
-		Port int    `yaml:"port"`
+		Host            string        `yaml:"host"`
+		Port            int           `yaml:"port"`
+		ReadTimeout     time.Duration `yaml:"read_timeout"`
+		WriteTimeout    time.Duration `yaml:"write_timeout"`
+		ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 	} `yaml:"server"`
 	Database struct {
 		Host     string `yaml:"db_host"`
@@ -27,20 +31,22 @@ type Config struct {
 		Password string `yaml:"db_pass"`
 		DBName   string `yaml:"db_name"`
 		SSLMode  string `yaml:"db_ssl_mode"`
+		Schema   string `yaml:"db_schema"`
 	} `yaml:"database"`
+	RabbitMQ struct {
+		Host            string `yaml:"rmq_host"`
+		Port            string `yaml:"rmq_port"`
+		User            string `yaml:"rmq_user"`
+		Password        string `yaml:"rmq_pass"`
+		Exchange        string `yaml:"rmq_exchange"`
+		DoctorQueueName string `yaml:"rmq_doctor_queue"`
+		UserQueueName   string `yaml:"rmq_user_queue"`
+		RoutingKey      string `yaml:"rmq_routing_key"`
+	} `yaml:"rabbitmq"`
 	JWT struct {
 		Secret string `yaml:"jwt_secret"`
 		Expire int    `yaml:"jwt_expire"`
 	} `yaml:"jwt"`
-	RabbitMQ struct {
-		Host       string `yaml:"rmq_host"`
-		Port       string `yaml:"rmq_port"`
-		User       string `yaml:"rmq_user"`
-		Password   string `yaml:"rmq_pass"`
-		Exchange   string `yaml:"rmq_exchange"`
-		UserQueue  string `yaml:"rmq_user_queue"`
-		RoutingKey string `yaml:"rmq_routing_key"`
-	} `yaml:"rabbitmq"`
 	Logging *LoggingConfig `yaml:"logging"`
 }
 
@@ -103,11 +109,6 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.Database.SSLMode = dbSSLMode
 	}
 
-	// JWT
-	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
-		cfg.JWT.Secret = jwtSecret
-	}
-
 	// RabbitMQ
 	if rmqHost := os.Getenv("RMQ_HOST"); rmqHost != "" {
 		cfg.RabbitMQ.Host = rmqHost
@@ -125,8 +126,9 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.RabbitMQ.Password = rmqPass
 	}
 
-	if rmqExchange := os.Getenv("RMQ_EXCHANGE"); rmqExchange != "" {
-		cfg.RabbitMQ.Exchange = rmqExchange
+	// JWT
+	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
+		cfg.JWT.Secret = jwtSecret
 	}
 
 	// Logging

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"identity_service/internal/config"
 	"identity_service/internal/handlers"
@@ -106,9 +107,45 @@ func main() {
 	}))
 
 	// Инициализируем наши 3 слоя - репозиторий, сервис и обработчики
-	// Роуты прописаны в обработчиках
 	userRepository := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepository, cfg.JWT.Secret, cfg.JWT.Expire)
+
+	// Подключаем RabbitMQ если настроен
+	if cfg.RabbitMQ.Host != "" {
+		rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
+			cfg.RabbitMQ.User,
+			cfg.RabbitMQ.Password,
+			cfg.RabbitMQ.Host,
+			cfg.RabbitMQ.Port,
+		)
+
+		// Инициализируем сервис сообщений
+		messageService, err := service.NewMessageService(
+			rabbitMQURL,
+			cfg.RabbitMQ.Exchange,
+			cfg.RabbitMQ.UserQueue,
+			cfg.RabbitMQ.RoutingKey,
+			appLogger,
+		)
+		if err != nil {
+			logError("Ошибка подключения к RabbitMQ", map[string]interface{}{
+				"error": err.Error(),
+				"url":   rabbitMQURL,
+			})
+			log.Printf("Ошибка подключения к RabbitMQ: %v. Работаем без событий.", err)
+		} else {
+			// Настраиваем корректное завершение работы сервиса сообщений при выходе
+			setupMessageServiceShutdown(messageService)
+
+			// Устанавливаем сервис сообщений в authService
+			authService.SetMessageService(messageService)
+			logInfo("RabbitMQ подключен успешно", nil)
+		}
+	} else {
+		logInfo("RabbitMQ не настроен, работаем без событий", nil)
+	}
+
+	// Роуты прописаны в обработчиках
 	handlers.RegisterRoutes(e, authService, appLogger)
 
 	logInfo("Сервер запущен", map[string]interface{}{
@@ -116,8 +153,26 @@ func main() {
 		"port": cfg.Server.Port,
 	})
 
-	// Запускаем сервер
-	e.Logger.Fatal(e.Start(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)))
+	// Запускаем сервер в отдельной горутине
+	go func() {
+		if err := e.Start(fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)); err != nil {
+			log.Fatalf("Ошибка запуска сервера: %v", err)
+		}
+	}()
+
+	// Ожидаем сигнала для корректного завершения
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
+
+	// Создаем контекст с таймаутом для завершения
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Корректно останавливаем сервер
+	if err := e.Shutdown(ctx); err != nil {
+		log.Fatalf("Ошибка при остановке сервера: %v", err)
+	}
 }
 
 // setupGracefulShutdown настраивает корректное завершение работы логгера при выходе
@@ -132,6 +187,20 @@ func setupGracefulShutdown(logger *logger.Client) {
 			logger.Close()
 		}
 		os.Exit(0)
+	}()
+}
+
+// setupMessageServiceShutdown настраивает корректное завершение работы сервиса сообщений при выходе
+func setupMessageServiceShutdown(messageService service.MessageService) {
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+
+	go func() {
+		<-c
+		log.Println("Завершение работы, закрытие сервиса сообщений...")
+		if messageService != nil {
+			messageService.Close()
+		}
 	}()
 }
 

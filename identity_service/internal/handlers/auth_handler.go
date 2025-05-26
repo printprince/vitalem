@@ -59,7 +59,7 @@ func (h *AuthHandler) Login(c echo.Context) error {
 			})
 		}
 
-		if err.Error() == "invalid email or password" {
+		if err.Error() == "Invalid email" || err.Error() == "Invalid password" {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Invalid email or password")
 		}
 		return echo.NewHTTPError(http.StatusInternalServerError, "Internal server error")
