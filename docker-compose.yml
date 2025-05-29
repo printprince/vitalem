@@ -1,7 +1,9 @@
 version: '3.8'
 
 services:
-  # База данных PostgreSQL
+  # PostgreSQL - основная реляционная БД для хранения данных всех сервисов
+  # Единый инстанс для всех микросервисов для упрощения разработки
+  # В проде можно будет разделить на отдельные инстансы по сервисам
   postgres:
     image: postgres:15
     container_name: vitalem_postgres
@@ -22,13 +24,15 @@ services:
       retries: 5
     restart: always
 
-  # RabbitMQ для обмена сообщениями между сервисами
+  # RabbitMQ - брокер сообщений для асинхронного взаимодействия между сервисами
+  # Используем для событийно-ориентированной коммуникации (event-driven)
+  # Например: создание пользователя -> создание профиля пациента/врача
   rabbitmq:
     image: rabbitmq:3-management
     container_name: vitalem_rabbitmq
     ports:
-      - "5672:5672"   # AMQP порт
-      - "15672:15672" # Management UI порт
+      - "5672:5672"   # AMQP порт для сервисов
+      - "15672:15672" # Management UI порт для админки (guest/guest)
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
@@ -43,7 +47,9 @@ services:
       retries: 5
     restart: always
 
-  # Сервис аутентификации
+  # Identity Service - сервис аутентификации и управления пользователями
+  # Отвечает за регистрацию, логин, JWT-токены и управление профилями юзеров
+  # Первый сервис в цепочке взаимодействия с системой
   identity_service:
     build:
       context: ./identity_service
@@ -76,26 +82,42 @@ services:
       - app-network
     restart: always
 
-  # ELK стек
+  # ELK-стек для централизованного логирования и мониторинга
+  # Elasticsearch - NoSQL БД для хранения и индексации логов
+  # Движок для полнотекстового поиска и аналитики по логам
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+      nofile:
+        soft: 65536
+        hard: 65536
     ports:
       - "9200:9200"
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./elasticsearch/config/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
     networks:
       - app-network
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9200"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     restart: always
 
+  # Kibana - веб-интерфейс для визуализации и анализа логов
+  # Работает поверх Elasticsearch, дает удобный UI для поиска и дашбордов
+  # Доступен на порту 5601 (http://localhost:5601)
   kibana:
     image: docker.elastic.co/kibana/kibana:7.17.0
     container_name: kibana
@@ -110,6 +132,9 @@ services:
       - app-network
     restart: always
 
+  # Filebeat - агент для сбора логов из Docker контейнеров
+  # Автоматически парсит JSON-логи и отправляет в Elasticsearch
+  # Работает на уровне Docker Engine API, не требует интеграции в приложения
   filebeat:
     image: docker.elastic.co/beats/filebeat:7.17.0
     volumes:
@@ -123,7 +148,9 @@ services:
       - app-network
     restart: always
 
-  # Сервис логирования
+  # Logger Service - кастомный сервис для централизованного логирования
+  # Принимает логи от всех микросервисов через REST API
+  # Обогащает и сохраняет в Elasticsearch для последующего анализа
   logger_service:
     build:
       context: ./logger_service
@@ -140,7 +167,9 @@ services:
       - app-network
     restart: always
 
-  # Сервис специалистов (врачей)
+  # Specialist Service - сервис для работы с врачами/специалистами
+  # Хранит профили врачей, специализации, расписания и т.д.
+  # Интегрируется с другими сервисами через RabbitMQ и прямые HTTP-вызовы
   specialist_service:
     build:
       context: ./specialist_service
@@ -176,6 +205,44 @@ services:
       - app-network
     restart: always
 
+  # Patient Service - сервис для работы с пациентами
+  # Хранит медицинские профили, историю болезней, рецепты и т.д.
+  # Основной сервис для пользователей-пациентов системы
+  patient_service:
+    build:
+      context: ./patient_service
+      dockerfile: Dockerfile
+    container_name: patient_service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASS=61324
+      - DB_NAME=vitalem_db
+      - DB_SSL_MODE=disable
+      - LOGGER_SERVICE_URL=http://logger_service:8802
+      - RMQ_HOST=rabbitmq
+      - RMQ_PORT=5672
+      - RMQ_USER=guest
+      - RMQ_PASS=guest
+      - RMQ_EXCHANGE=vitalem
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - TZ=Europe/Moscow
+    ports:
+      - "8804:8804"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
+      identity_service:
+        condition: service_started
+    networks:
+      - app-network
+    restart: always
+    
 networks:
   app-network:
     driver: bridge

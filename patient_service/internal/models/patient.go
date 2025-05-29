@@ -8,39 +8,47 @@ import (
 	"gorm.io/gorm"
 )
 
-// Константы для физической активности
+// Константы для уровней физической активности
+// В будущем можно вынести в отдельную таблицу,
+// но пока хватит и этого - упростит работу фронта
 const (
-	ActivityInactive      = "Неактивный"
-	ActivityLowActive     = "Малоактивный"
-	ActivityActive        = "Активный"
-	ActivityVeryActive    = "Очень активный"
-	ActivityExtremeActive = "Экстремально активный"
+	ActivityInactive      = "Неактивный"            // < 5k шагов в день, базовое потребление
+	ActivityLowActive     = "Малоактивный"          // 5-7.5k шагов, минимальная нагрузка
+	ActivityActive        = "Активный"              // 7.5-10k шагов, регулярные тренировки
+	ActivityVeryActive    = "Очень активный"        // 10-12.5k шагов, интенсивные тренировки
+	ActivityExtremeActive = "Экстремально активный" // >12.5k шагов, профессиональный спорт
 )
 
-// Patient модель пациента
+// Patient - основная модель пациента для хранения в БД
+// Тут целый комбайн данных, чтобы не плодить таблицы.
+// TODO: В будущем при увеличении базы вынести диагнозы, аллергены и диеты
+// в отдельные таблицы с many-to-many связями для нормализации БД.
 type Patient struct {
 	ID                  uuid.UUID      `gorm:"type:uuid;primary_key"`
-	UserID              uuid.UUID      `gorm:"type:uuid;index"`
+	UserID              uuid.UUID      `gorm:"type:uuid;index"` // Связь с юзером из identity_service
 	Name                string         `gorm:"type:varchar(100)"`
+	IIN                 string         `gorm:"type:varchar(12); uniqueIndex"` // ИИН должен быть уникальным
 	Surname             string         `gorm:"type:varchar(100)"`
 	DateOfBirth         time.Time      `gorm:"type:date"`
 	Gender              string         `gorm:"type:varchar(20)"`
-	Email               string         `gorm:"type:varchar(255);uniqueIndex"`
+	Email               string         `gorm:"type:varchar(255);uniqueIndex"` // Уникальный для рассылок
 	Phone               string         `gorm:"type:varchar(20)"`
-	Height              float64        `gorm:"type:decimal(5,2)"` // в сантиметрах
-	Weight              float64        `gorm:"type:decimal(5,2)"` // в килограммах
-	PhysActivity        string         `gorm:"type:varchar(50)"`
-	Diagnoses           pq.StringArray `gorm:"type:varchar(255)[]"`
-	AdditionalDiagnoses pq.StringArray `gorm:"type:varchar(255)[]"`
-	Allergens           pq.StringArray `gorm:"type:varchar(255)[]"`
-	AdditionalAllergens pq.StringArray `gorm:"type:varchar(255)[]"`
-	Diet                pq.StringArray `gorm:"type:varchar(255)[]"`
-	AdditionalDiets     pq.StringArray `gorm:"type:varchar(255)[]"`
-	CreatedAt           time.Time
-	UpdatedAt           time.Time
+	Height              float64        `gorm:"type:decimal(5,2)"`   // в сантиметрах - можем хранить до 999.99
+	Weight              float64        `gorm:"type:decimal(5,2)"`   // в килограммах - аналогично до 999.99
+	PhysActivity        string         `gorm:"type:varchar(50)"`    // Из констант выше
+	Diagnoses           pq.StringArray `gorm:"type:varchar(255)[]"` // Основные диагнозы из справочника
+	AdditionalDiagnoses pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные диагнозы
+	Allergens           pq.StringArray `gorm:"type:varchar(255)[]"` // Аллергены из справочника
+	AdditionalAllergens pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные аллергены
+	Diet                pq.StringArray `gorm:"type:varchar(255)[]"` // Диеты из справочника
+	AdditionalDiets     pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные диеты
+	CreatedAt           time.Time      // Стандартные GORM метки времени
+	UpdatedAt           time.Time      // Автоматически обновляется при изменении
 }
 
-// BeforeCreate - хук для генерации UUID перед созданием
+// BeforeCreate - хук GORM для автогенерации UUID перед вставкой в базу
+// Если ID не задан (пустой или nil), то генерим новый UUID v4
+// Это фулпруф от ошибок в коде и битых ID в базе
 func (p *Patient) BeforeCreate(tx *gorm.DB) error {
 	if p.ID == uuid.Nil {
 		p.ID = uuid.New()

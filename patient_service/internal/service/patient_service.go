@@ -96,6 +96,10 @@ func (s *patientService) GetAllPatients(ctx context.Context) ([]*models.PatientR
 	return response, nil
 }
 
+// UpdatePatient - метод для обновления данных существующего пациента
+// Обновляет все поля по ID пациента (не частичное обновление)
+// Если пациент не найден - возвращает nil без ошибки
+// Подходит для полного обновления профиля через админку
 func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *models.PatientCreateRequest) (*models.PatientResponse, error) {
 	patient, err := s.patientRepo.FindByID(ctx, id)
 	if err != nil {
@@ -110,7 +114,9 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 		return nil, nil
 	}
 
-	// Обновляем поля
+	// Обновляем все поля пациента из запроса
+	// Жёсткий перезапись всех полей без проверки на nil
+	// TODO: Добавить частичное обновление с проверкой заполненности полей
 	patient.Name = req.Name
 	patient.Surname = req.Surname
 	patient.DateOfBirth = req.DateOfBirth
@@ -127,6 +133,7 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 	patient.Diet = req.Diet
 	patient.AdditionalDiets = req.AdditionalDiets
 
+	// Сохраняем обновленные данные в базу
 	updatedPatient, err := s.patientRepo.Update(ctx, patient)
 	if err != nil {
 		s.logger.Error("Failed to update patient", map[string]interface{}{
@@ -139,6 +146,10 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 	return updatedPatient.ToPatientResponse(), nil
 }
 
+// UpdatePatientProfile - обновление или создание профиля пациента по UserID
+// Умная логика: если профиль существует - обновляет, если нет - создает новый
+// Используется для второго этапа регистрации, когда юзер уже создан в identity_service,
+// но еще не заполнил свой медицинский профиль
 func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.UUID, req *models.PatientCreateRequest) (*models.PatientResponse, error) {
 	patient, err := s.patientRepo.FindByUserID(ctx, userID)
 	if err != nil {
@@ -150,14 +161,17 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 	}
 
 	if patient == nil {
-		// Если профиль не найден, но у нас есть данные для создания, создаем новый
+		// Если профиль не найден - создаем новый на лету
+		// Это удобно для фронта - единый эндпоинт для создания и обновления
 		s.logger.Info("Creating new patient profile for user", map[string]interface{}{
 			"userID": userID,
 		})
 
+		// Конвертим DTO в модель и устанавливаем правильный UserID
 		newPatient := req.ToPatient()
-		newPatient.UserID = userID // Устанавливаем ID пользователя
+		newPatient.UserID = userID // Перезаписываем ID из пути, это критично для безопасности
 
+		// Сохраняем нового пациента в базу
 		createdPatient, err := s.patientRepo.Create(ctx, newPatient)
 		if err != nil {
 			s.logger.Error("Failed to create patient profile", map[string]interface{}{
@@ -171,6 +185,7 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 	}
 
 	// Обновляем поля существующего профиля
+	// Тут та же логика, что и в UpdatePatient, но с поиском по UserID
 	patient.Name = req.Name
 	patient.Surname = req.Surname
 	patient.DateOfBirth = req.DateOfBirth
@@ -187,6 +202,7 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 	patient.Diet = req.Diet
 	patient.AdditionalDiets = req.AdditionalDiets
 
+	// Сохраняем изменения
 	updatedPatient, err := s.patientRepo.Update(ctx, patient)
 	if err != nil {
 		s.logger.Error("Failed to update patient profile", map[string]interface{}{

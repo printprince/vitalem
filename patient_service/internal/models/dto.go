@@ -10,6 +10,7 @@ import (
 // PatientCreateRequest структура запроса для создания пациента
 type PatientCreateRequest struct {
 	UserID              uuid.UUID `json:"user_id" binding:"required"`
+	IIN                 string    `json:"iin" binding: "required,len=12"`
 	Name                string    `json:"name" binding:"required"`
 	Surname             string    `json:"surname" binding:"required"`
 	DateOfBirth         time.Time `json:"date_of_birth" binding:"required"`
@@ -31,6 +32,7 @@ type PatientCreateRequest struct {
 type PatientResponse struct {
 	ID                  uuid.UUID `json:"id"`
 	UserID              uuid.UUID `json:"user_id"`
+	IIN                 string    `json:"iin"`
 	Name                string    `json:"name"`
 	Surname             string    `json:"surname"`
 	DateOfBirth         time.Time `json:"date_of_birth"`
@@ -54,6 +56,7 @@ type PatientResponse struct {
 func (r *PatientCreateRequest) ToPatient() *Patient {
 	return &Patient{
 		UserID:              r.UserID,
+		IIN:                 r.IIN,
 		Name:                r.Name,
 		Surname:             r.Surname,
 		DateOfBirth:         r.DateOfBirth,
@@ -77,6 +80,7 @@ func (p *Patient) ToPatientResponse() *PatientResponse {
 	return &PatientResponse{
 		ID:                  p.ID,
 		UserID:              p.UserID,
+		IIN:                 p.IIN,
 		Name:                p.Name,
 		Surname:             p.Surname,
 		DateOfBirth:         p.DateOfBirth,

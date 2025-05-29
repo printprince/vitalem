@@ -177,11 +177,11 @@ func main() {
 	}))
 
 	// Регистрируем публичные маршруты
-	publicRoutes := e.Group("")
+	publicRoutes := e.Group("/public")
 	patientHandlers.RegisterPublicRoutes(publicRoutes)
 
 	// Регистрируем защищенные маршруты с JWT middleware
-	protectedRoutes := e.Group("/api")
+	protectedRoutes := e.Group("")
 	protectedRoutes.Use(jwtmiddleware.JWTMiddleware(cfg.JWT.Secret))
 	patientHandlers.RegisterProtectedRoutes(protectedRoutes)
 

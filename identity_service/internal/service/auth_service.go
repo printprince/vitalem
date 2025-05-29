@@ -6,21 +6,34 @@ import (
 	"fmt"
 	"identity_service/internal/models"
 	"identity_service/internal/repository"
-	"log"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// TokenClaims - структура данных для JWT токена
+// Вся инфа, которую мы засовываем в токен и потом можем получить из него
+type TokenClaims struct {
+	UserID    string `json:"user_id"`
+	Email     string `json:"email"`
+	Role      string `json:"role"`
+	ExpiresAt int64  `json:"exp"`
+}
+
+// AuthService - сервис аутентификации и авторизации
+// Содержит бизнес-логику для работы с пользователями, JWT и хешированием
 type AuthService struct {
 	userRepository *repository.UserRepository
 	messageService MessageService
 	jwtSecret      string
 	jwtExpire      int
+	logger         *logger.Client
 }
 
-// NewAuthService создает новый сервис аутентификации
+// NewAuthService - фабрика для создания сервиса аутентификации
+// Принимает репозиторий пользователей и настройки JWT
 func NewAuthService(userRepository *repository.UserRepository, jwtSecret string, jwtExpire int) *AuthService {
 	return &AuthService{
 		userRepository: userRepository,
@@ -29,114 +42,173 @@ func NewAuthService(userRepository *repository.UserRepository, jwtSecret string,
 	}
 }
 
-// SetMessageService устанавливает сервис сообщений
+// SetMessageService - установка сервиса сообщений
+// Опционально - используется для публикации событий создания пользователя
 func (s *AuthService) SetMessageService(messageService MessageService) {
 	s.messageService = messageService
 }
 
-// Register - сервис создания аккаунта
+// SetLogger - устанавливает клиент логирования
+func (s *AuthService) SetLogger(logger *logger.Client) {
+	s.logger = logger
+}
+
+// Register - регистрация нового пользователя
+// Создает хеш пароля, записывает в БД и отправляет событие в RabbitMQ
+// В случае успеха тригерит создание начального профиля пользователя
 func (s *AuthService) Register(email, password, role string) error {
-	// Проверка емайла на существование
-	existing, _ := s.userRepository.FindByEmail(email)
-	if existing != nil {
+	// Проверяем, не существует ли уже пользователь с таким email
+	// Защита от дублей в базе
+	existingUser, err := s.userRepository.FindByEmail(email)
+	if err == nil && existingUser != nil {
+		if s.logger != nil {
+			s.logger.Warn("Попытка повторной регистрации", map[string]interface{}{
+				"email": email,
+			})
+		}
 		return errors.New("User with this email already exists")
 	}
 
-	// Хешируем пароль
+	// Хешируем пароль с помощью bcrypt
+	// Используем высокий cost для усиления защиты
+	// (по дефолту 10, но можно поднять до 14 для критичных систем)
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		return fmt.Errorf("could not hash password: %w", err)
+		if s.logger != nil {
+			s.logger.Error("Ошибка хеширования пароля", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+		return err
 	}
 
-	// Создаем структуру и вкладываем туда данные юзера
+	// Создаем нового пользователя
+	// ID генерится автоматически в BeforeCreate хуке
 	user := &models.Users{
 		Email:          email,
 		HashedPassword: string(hashedPassword),
 		Role:           role,
-		CreatedAt:      time.Now(),
 	}
 
-	// Создаем пользователя
-	log.Printf("New user registered with email: %s, role: %s", email, role)
+	// Сохраняем пользователя в базу данных
 	if err := s.userRepository.Create(user); err != nil {
+		if s.logger != nil {
+			s.logger.Error("Ошибка создания пользователя", map[string]interface{}{
+				"email": email,
+				"error": err.Error(),
+			})
+		}
 		return err
 	}
 
-	// Если сервис сообщений доступен, публикуем событие создания пользователя
+	// Если у нас есть сервис сообщений, отправляем событие создания пользователя
+	// Это триггерит создание записей в других сервисах (профили пациента/врача)
 	if s.messageService != nil {
-		// Создаем событие
+		// Создаем событие с указателем на структуру, как требует интерфейс
 		event := &models.UserCreatedEvent{
 			UserID: user.ID.String(),
-			Email:  email,
-			Role:   role,
+			Email:  user.Email,
+			Role:   user.Role,
 		}
 
-		// Публикуем событие
+		// Создаем контекст для передачи в метод публикации
 		ctx := context.Background()
+
 		if err := s.messageService.PublishUserCreated(ctx, event); err != nil {
-			log.Printf("Failed to publish user created event: %v", err)
-			// Не возвращаем ошибку, так как пользователь уже создан
+			// Логируем ошибку, но не фейлим всю операцию
+			// Это нормально для систем с eventual consistency
+			if s.logger != nil {
+				s.logger.Error("Ошибка публикации события создания пользователя", map[string]interface{}{
+					"user_id": user.ID,
+					"email":   user.Email,
+					"error":   err.Error(),
+				})
+			}
+			// Не возвращаем ошибку, т.к. пользователь уже создан
+			// В худшем случае профиль придется создать вручную
 		}
+	}
+
+	if s.logger != nil {
+		s.logger.Info("Пользователь успешно зарегистрирован", map[string]interface{}{
+			"email": email,
+			"role":  role,
+		})
 	}
 
 	return nil
 }
 
-// Login - сервис авторизации
+// Login - аутентификация пользователя по email и паролю
+// Проверяет существование юзера, валидирует пароль и генерит JWT токен
+// Возвращает ошибку если данные неверные или произошел сбой в БД
 func (s *AuthService) Login(email, password string) (string, error) {
-	// Ищем емайл пользователя
+	// Проверяем, существует ли пользователь с таким email
+	// Кейс-сенситив поиск по уникальному индексу
 	user, err := s.userRepository.FindByEmail(email)
 	if err != nil {
+		if s.logger != nil {
+			s.logger.Error("Ошибка при поиске пользователя", map[string]interface{}{
+				"email": email,
+				"error": err.Error(),
+			})
+		}
 		return "", errors.New("Invalid email")
 	}
 
-	// Проверяем пароль
+	// Проверяем пароль через bcrypt
+	// bcrypt.CompareHashAndPassword - тяжелая операция по CPU
+	// Защищает от брутфорса и тайминг-атак
 	err = bcrypt.CompareHashAndPassword([]byte(user.HashedPassword), []byte(password))
 	if err != nil {
+		if s.logger != nil {
+			s.logger.Warn("Неудачная попытка входа: неверный пароль", map[string]interface{}{
+				"email": email,
+			})
+		}
 		return "", errors.New("Invalid password")
 	}
 
-	// Создаем claims с использованием нашей структуры
-	claims := &models.TokenClaims{
-		StandardClaims: jwt.StandardClaims{
-			ExpiresAt: time.Now().Add(time.Duration(s.jwtExpire) * time.Hour).Unix(),
-			IssuedAt:  time.Now().Unix(),
-		},
-		UserID: user.ID,
-		Email:  user.Email,
-		Role:   user.Role,
-	}
-
-	// Создаем токен с указанием claims
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-
-	// Подписание токена
-	tokenString, err := token.SignedString([]byte(s.jwtSecret))
+	// Генерируем токен после успешной проверки
+	// Используем UUID для идентификации пользователя
+	token, err := s.generateToken(user.ID.String(), user.Email, user.Role)
 	if err != nil {
-		return "", errors.New("could not generate token")
+		if s.logger != nil {
+			s.logger.Error("Ошибка генерации токена", map[string]interface{}{
+				"email": email,
+				"error": err.Error(),
+			})
+		}
+		return "", err
 	}
 
-	log.Printf("User %s logged in successfully", email)
-	return tokenString, nil
+	if s.logger != nil {
+		s.logger.Info("Успешный вход пользователя", map[string]interface{}{
+			"email": email,
+			"role":  user.Role,
+		})
+	}
+
+	return token, nil
 }
 
-// ValidateToken - сервис для валидации токена
-func (s *AuthService) ValidateToken(tokenString string) (*models.TokenClaims, error) {
-	// Создаем новый экземпляр TokenClaims
-	claims := &models.TokenClaims{}
-
-	// Парсим токен с указанными claims
-	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-		// Проверяем используемый алгоритм
+// ValidateToken - проверка и декодирование JWT токена
+// Полная валидация подписи, срока действия и формата
+// Возвращает данные из токена или ошибку если токен невалидный
+func (s *AuthService) ValidateToken(tokenString string) (*TokenClaims, error) {
+	// Парсим токен
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		// Проверяем алгоритм подписи
+		// Защита от атак с подменой алгоритма (none -> HS256)
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 
-		// Возвращаем ключ для проверки подписи
+		// Возвращаем секретный ключ для проверки подписи
 		return []byte(s.jwtSecret), nil
 	})
 
-	// Проверяем ошибки
+	// Проверяем ошибки парсинга
 	if err != nil {
 		return nil, err
 	}
@@ -146,9 +218,76 @@ func (s *AuthService) ValidateToken(tokenString string) (*models.TokenClaims, er
 		return nil, errors.New("invalid token")
 	}
 
-	return claims, nil
+	// Извлекаем claims из токена
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, errors.New("invalid token claims")
+	}
+
+	// Проверяем срок действия токена
+	exp, ok := claims["exp"].(float64)
+	if !ok {
+		return nil, errors.New("invalid expiration time")
+	}
+
+	if int64(exp) < time.Now().Unix() {
+		return nil, errors.New("token expired")
+	}
+
+	// Извлекаем данные из токена
+	userID, ok := claims["user_id"].(string)
+	if !ok {
+		return nil, errors.New("invalid user_id in token")
+	}
+
+	email, ok := claims["email"].(string)
+	if !ok {
+		return nil, errors.New("invalid email in token")
+	}
+
+	role, ok := claims["role"].(string)
+	if !ok {
+		return nil, errors.New("invalid role in token")
+	}
+
+	// Возвращаем данные из токена
+	return &TokenClaims{
+		UserID:    userID,
+		Email:     email,
+		Role:      role,
+		ExpiresAt: int64(exp),
+	}, nil
 }
 
+// GetJWTSecret - получение секретного ключа для JWT
+// Используется в middleware для валидации токенов
 func (s *AuthService) GetJWTSecret() string {
 	return s.jwtSecret
+}
+
+// generateToken - внутренний метод для генерации JWT токена
+// Создает signed JWT с полезной нагрузкой из ID, email и роли
+func (s *AuthService) generateToken(userID, email, role string) (string, error) {
+	// Задаем время истечения токена (текущее время + jwtExpire часов)
+	expirationTime := time.Now().Add(time.Duration(s.jwtExpire) * time.Hour).Unix()
+
+	// Создаем claims для токена
+	claims := jwt.MapClaims{
+		"user_id": userID,
+		"email":   email,
+		"role":    role,
+		"exp":     expirationTime,
+	}
+
+	// Создаем новый токен с указанными claims
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+	// Подписываем токен секретным ключом
+	// HS256 - это симметричный алгоритм шифрования (один ключ для создания и проверки)
+	tokenString, err := token.SignedString([]byte(s.jwtSecret))
+	if err != nil {
+		return "", err
+	}
+
+	return tokenString, nil
 }

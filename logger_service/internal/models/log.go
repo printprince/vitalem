@@ -13,11 +13,11 @@ const (
 
 // Представляет запись в логе
 type LogEntry struct {
-	ID        uint   `gorm:"primary_key" json:"id"` // Идентификатор записи
-	Timestamp time.Time `json:"timestamp"` // Время создания записи
-	Service   string    `json:"service"` // Имя сервиса, который записал лог
-	Level     LogLevel   `json:"level"` // Уровень логирования
-	Message   string    `json:"message"` // Сообщение лога
-	Metadata  string    `json:"metadata"` // Дополнительные данные
-	CreatedAt time.Time `json:"created_at"` // Время создания записи
+	ID        uint      `gorm:"primary_key" json:"id"` // Идентификатор записи
+	Timestamp time.Time `json:"timestamp"`             // Время создания записи
+	Service   string    `json:"service"`               // Имя сервиса, который записал лог
+	Level     LogLevel  `json:"level"`                 // Уровень логирования
+	Message   string    `json:"message"`               // Сообщение лога
+	Metadata  string    `json:"metadata"`              // Дополнительные данные
+	CreatedAt time.Time `json:"created_at"`            // Время создания записи
 }

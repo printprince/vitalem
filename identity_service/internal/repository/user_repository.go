@@ -1,8 +1,9 @@
 package repository
 
 import (
-	"gorm.io/gorm"
 	"identity_service/internal/models"
+
+	"gorm.io/gorm"
 )
 
 type UserRepository struct {

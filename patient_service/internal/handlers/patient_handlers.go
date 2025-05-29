@@ -26,8 +26,7 @@ func NewPatientHandlers(patientService service.PatientService, logger *logger.Cl
 
 // RegisterPublicRoutes регистрирует публичные маршруты
 func (h *PatientHandlers) RegisterPublicRoutes(g *echo.Group) {
-	// Публичные маршруты для поиска пациентов по ID
-	g.GET("/patients/:id", h.GetPatientByID)
+	// Оставил на будущее
 }
 
 // RegisterProtectedRoutes регистрирует защищенные маршруты

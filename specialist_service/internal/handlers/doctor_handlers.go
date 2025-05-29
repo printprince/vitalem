@@ -52,6 +52,9 @@ func (h *DoctorHandlers) RegisterProtectedRoutes(g *echo.Group) {
 
 	// Маршрут для обновления профиля врача (для второго этапа регистрации)
 	g.PUT("/users/:userID/doctor", h.UpdateDoctorProfile)
+
+	// Тестовый маршрут для проверки токена и роли
+	g.GET("/me", h.GetCurrentUserInfo)
 }
 
 func (h *DoctorHandlers) CreateDoctor(c echo.Context) error {
@@ -262,4 +265,25 @@ func (h *DoctorHandlers) DeleteDoctor(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+// GetCurrentUserInfo возвращает информацию о текущем пользователе из JWT токена
+func (h *DoctorHandlers) GetCurrentUserInfo(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "User ID not found in context")
+	}
+
+	role, ok := c.Get("role").(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Role not found in context")
+	}
+
+	email, _ := c.Get("email").(string)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"user_id": userID,
+		"role":    role,
+		"email":   email,
+	})
 }
