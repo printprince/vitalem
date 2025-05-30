@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service 
 FROM alpine:latest
 
 # Устанавливаем необходимые пакеты
-RUN apk --no-cache add ca-certificates tzdata wget curl
+RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 
 WORKDIR /app
 
@@ -36,19 +36,20 @@ COPY <<EOF /app/wait-for.sh
 set -e
 
 host="$1"
-shift
+port="$2"
+shift 2
 cmd="$@"
 
-until wget --spider -q "$host"; do
-  >&2 echo "Waiting for $host to be ready..."
+until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$host" -p "$port" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
+  >&2 echo "Postgres is unavailable - sleeping"
   sleep 1
 done
 
->&2 echo "$host is ready!"
+>&2 echo "Postgres is up - executing command"
 exec $cmd
 EOF
 
 RUN chmod +x /app/wait-for.sh
 
 # Запускаем приложение с проверкой готовности зависимостей
-CMD ["/app/wait-for.sh", "http://postgres:5432", "/app/identity_service"]
+CMD ["/app/wait-for.sh", "postgres", "5432", "/app/identity_service"]
