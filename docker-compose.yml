@@ -20,9 +20,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 20s
     restart: always
     deploy:
       resources:
@@ -54,7 +55,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 40s
+      start_period: 60s
     restart: always
     deploy:
       resources:
@@ -102,10 +103,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8801/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: always
     deploy:
       resources:
@@ -142,11 +143,11 @@ services:
     networks:
       - app-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200"]
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
       interval: 30s
       timeout: 10s
       retries: 5
-      start_period: 60s
+      start_period: 90s
     restart: always
     deploy:
       resources:
@@ -168,6 +169,7 @@ services:
       - SERVER_NAME=kibana
       - ELASTICSEARCH_USERNAME=
       - ELASTICSEARCH_PASSWORD=
+      - ELASTICSEARCH_REQUEST_TIMEOUT=90000
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -177,8 +179,8 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
       interval: 30s
       timeout: 10s
-      retries: 3
-      start_period: 30s
+      retries: 5
+      start_period: 60s
     restart: always
     deploy:
       resources:
@@ -205,7 +207,8 @@ services:
       test: ["CMD", "filebeat", "test", "config"]
       interval: 30s
       timeout: 10s
-      retries: 3
+      retries: 5
+      start_period: 30s
     restart: always
     deploy:
       resources:
@@ -235,10 +238,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8802/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: always
     deploy:
       resources:
@@ -289,10 +292,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8803/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: always
     deploy:
       resources:
@@ -343,10 +346,10 @@ services:
       - app-network
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:8804/health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     restart: always
     deploy:
       resources:
