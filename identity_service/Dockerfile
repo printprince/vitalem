@@ -17,7 +17,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service 
 # Финальный образ
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates tzdata
+# Устанавливаем необходимые пакеты
+RUN apk --no-cache add ca-certificates tzdata wget curl
 
 WORKDIR /app
 
@@ -27,5 +28,27 @@ COPY --from=builder /app/config.yaml .
 
 EXPOSE 8801
 
-# Запускаем приложение
-CMD ["./identity_service"]
+# Добавляем скрипт для проверки готовности сервисов
+COPY <<EOF /app/wait-for.sh
+#!/bin/sh
+# wait-for.sh
+
+set -e
+
+host="$1"
+shift
+cmd="$@"
+
+until wget --spider -q "$host"; do
+  >&2 echo "Waiting for $host to be ready..."
+  sleep 1
+done
+
+>&2 echo "$host is ready!"
+exec $cmd
+EOF
+
+RUN chmod +x /app/wait-for.sh
+
+# Запускаем приложение с проверкой готовности зависимостей
+CMD ["/app/wait-for.sh", "http://postgres:5432", "/app/identity_service"]
