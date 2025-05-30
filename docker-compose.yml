@@ -53,6 +53,91 @@ services:
         limits:
           memory: 128M
 
+  # ELK-стек для централизованного логирования и мониторинга
+  # Elasticsearch - NoSQL БД для хранения и индексации логов
+  # Движок для полнотекстового поиска и аналитики по логам
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - "ES_JAVA_OPTS=-Xms64m -Xmx64m"
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  # Kibana - веб-интерфейс для Elasticsearch
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.0
+    container_name: kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - SERVER_NAME=kibana
+      - NODE_OPTIONS="--max-old-space-size=128"
+      - ELASTICSEARCH_REQUEST_TIMEOUT=30000
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+
+  # Filebeat - агент для сбора и отправки логов
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:7.17.0
+    volumes:
+      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    user: root
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
+  # Logger Service - кастомный сервис для централизованного логирования
+  # Принимает логи от всех микросервисов через REST API
+  # Обогащает и сохраняет в Elasticsearch для последующего анализа
+  logger_service:
+    build:
+      context: ./logger_service
+      dockerfile: Dockerfile
+    container_name: logger_service
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    ports:
+      - "8802:8802"
+    depends_on:
+      - elasticsearch
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+
   # Identity Service - сервис аутентификации и управления пользователями
   # Отвечает за регистрацию, логин, JWT-токены и управление профилями юзеров
   # Первый сервис в цепочке взаимодействия с системой
@@ -82,116 +167,6 @@ services:
       - postgres
       - rabbitmq
       - logger_service
-    networks:
-      - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-
-  # ELK-стек для централизованного логирования и мониторинга
-  # Elasticsearch - NoSQL БД для хранения и индексации логов
-  # Движок для полнотекстового поиска и аналитики по логам
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.0
-    container_name: elasticsearch
-    environment:
-      - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms64m -Xmx64m"
-      - xpack.security.enabled=false
-      - bootstrap.memory_lock=false
-    ports:
-      - "9200:9200"
-    volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
-  # Kibana - веб-интерфейс для визуализации и анализа логов
-  # Работает поверх Elasticsearch, дает удобный UI для поиска и дашбордов
-  # Доступен на порту 5601 (http://localhost:5601)
-  kibana:
-    image: docker.elastic.co/kibana/kibana:7.17.0
-    container_name: kibana
-    ports:
-      - "5601:5601"
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - SERVER_NAME=kibana
-      - ELASTICSEARCH_USERNAME=
-      - ELASTICSEARCH_PASSWORD=
-      - ELASTICSEARCH_REQUEST_TIMEOUT=90000
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5601/api/status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 60s
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-        reservations:
-          memory: 128M
-
-  # Filebeat - агент для сбора логов из Docker контейнеров
-  # Автоматически парсит JSON-логи и отправляет в Elasticsearch
-  # Работает на уровне Docker Engine API, не требует интеграции в приложения
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:7.17.0
-    volumes:
-      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    user: root
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "filebeat", "test", "config"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    restart: always
-    deploy:
-      resources:
-        limits:
-          memory: 128M
-        reservations:
-          memory: 64M
-
-  # Logger Service - кастомный сервис для централизованного логирования
-  # Принимает логи от всех микросервисов через REST API
-  # Обогащает и сохраняет в Elasticsearch для последующего анализа
-  logger_service:
-    build:
-      context: ./logger_service
-      dockerfile: Dockerfile
-    container_name: logger_service
-    environment:
-      - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - LOG_LEVEL=info
-    ports:
-      - "8802:8802"
-    depends_on:
-      - elasticsearch
     networks:
       - app-network
     deploy:
