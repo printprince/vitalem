@@ -22,10 +22,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
-    deploy:
-      resources:
-        limits:
-          memory: 128M
 
   # RabbitMQ - брокер сообщений для асинхронного взаимодействия между сервисами
   # Используем для событийно-ориентированной коммуникации (event-driven)
@@ -39,8 +35,6 @@ services:
     environment:
       - RABBITMQ_DEFAULT_USER=guest
       - RABBITMQ_DEFAULT_PASS=guest
-      - RABBITMQ_ERLANG_COOKIE=secret_cookie
-      - RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS=-rabbit log_levels [{connection,error},{channel,error}]
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
@@ -49,12 +43,7 @@ services:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 128M
+      retries: 3
 
   # ELK-стек для централизованного логирования и мониторинга
   # Elasticsearch - NoSQL БД для хранения и индексации логов
@@ -64,18 +53,7 @@ services:
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
-      - "ES_JAVA_OPTS=-Xms128m -Xmx128m"
       - xpack.security.enabled=false
-      - bootstrap.memory_lock=false
-      - cluster.routing.allocation.disk.threshold_enabled=false
-      - action.destructive_requires_name=true
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-      nofile:
-        soft: 65536
-        hard: 65536
     ports:
       - "9200:9200"
     volumes:
@@ -86,12 +64,7 @@ services:
       test: ["CMD", "curl", "-f", "http://localhost:9200/_cluster/health"]
       interval: 30s
       timeout: 10s
-      retries: 5
-      start_period: 40s
-    deploy:
-      resources:
-        limits:
-          memory: 256M
+      retries: 3
 
   # Kibana - веб-интерфейс для Elasticsearch
   kibana:
@@ -99,19 +72,12 @@ services:
     container_name: kibana
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - SERVER_NAME=kibana
-      - NODE_OPTIONS="--max-old-space-size=128"
-      - ELASTICSEARCH_REQUEST_TIMEOUT=30000
     ports:
       - "5601:5601"
     depends_on:
       - elasticsearch
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 128M
 
   # Filebeat - агент для сбора и отправки логов
   filebeat:
@@ -124,14 +90,9 @@ services:
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log/docker:/var/log/docker:ro
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      - elasticsearch
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
 
   # Logger Service - кастомный сервис для централизованного логирования
   # Принимает логи от всех микросервисов через REST API
@@ -144,19 +105,12 @@ services:
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
       - LOG_LEVEL=info
-      - ELASTICSEARCH_RETRY_ATTEMPTS=30
-      - ELASTICSEARCH_RETRY_DELAY=2
     ports:
       - "8802:8802"
     depends_on:
-      elasticsearch:
-        condition: service_healthy
+      - elasticsearch
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
 
   # Identity Service - сервис аутентификации и управления пользователями
   # Отвечает за регистрацию, логин, JWT-токены и управление профилями юзеров
@@ -189,10 +143,6 @@ services:
       - logger_service
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
 
   # Specialist Service - сервис для работы с врачами/специалистами
   # Хранит профили врачей, специализации, расписания и т.д.
@@ -226,10 +176,6 @@ services:
       - identity_service
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
 
   # Patient Service - сервис для работы с пациентами
   # Хранит медицинские профили, историю болезней, рецепты и т.д.
@@ -263,11 +209,7 @@ services:
       - identity_service
     networks:
       - app-network
-    deploy:
-      resources:
-        limits:
-          memory: 64M
-    
+
 networks:
   app-network:
     driver: bridge
