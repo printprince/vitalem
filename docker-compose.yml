@@ -61,7 +61,6 @@ services:
       - network.host=0.0.0.0
       - cluster.name=docker-cluster
       - node.name=es01
-      - cluster.initial_master_nodes=es01
       - bootstrap.system_call_filter=false
       - "indices.query.bool.max_clause_count=8192"
       - "search.max_buckets=10000"
