@@ -108,7 +108,8 @@ services:
     ports:
       - "8802:8802"
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -138,9 +139,12 @@ services:
     ports:
       - "8801:8801"
     depends_on:
-      - postgres
-      - rabbitmq
-      - logger_service
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
     networks:
       - app-network
 
@@ -170,10 +174,14 @@ services:
     ports:
       - "8803:8803"
     depends_on:
-      - postgres
-      - rabbitmq
-      - logger_service
-      - identity_service
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
+      identity_service:
+        condition: service_started
     networks:
       - app-network
 
@@ -203,10 +211,14 @@ services:
     ports:
       - "8804:8804"
     depends_on:
-      - postgres
-      - rabbitmq
-      - logger_service
-      - identity_service
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      logger_service:
+        condition: service_started
+      identity_service:
+        condition: service_started
     networks:
       - app-network
 
