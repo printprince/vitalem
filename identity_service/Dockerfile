@@ -28,28 +28,5 @@ COPY --from=builder /app/config.yaml .
 
 EXPOSE 8801
 
-# Добавляем скрипт для проверки готовности сервисов
-COPY <<EOF /app/wait-for.sh
-#!/bin/sh
-# wait-for.sh
-
-set -e
-
-host="$1"
-port="$2"
-shift 2
-cmd="$@"
-
-until PGPASSWORD=$POSTGRES_PASSWORD psql -h "$host" -p "$port" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
-  >&2 echo "Postgres is unavailable - sleeping"
-  sleep 1
-done
-
->&2 echo "Postgres is up - executing command"
-exec $cmd
-EOF
-
-RUN chmod +x /app/wait-for.sh
-
-# Запускаем приложение с проверкой готовности зависимостей
-CMD ["/app/wait-for.sh", "postgres", "5432", "/app/identity_service"]
+# Запускаем приложение
+CMD ["./identity_service"]
