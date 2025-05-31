@@ -54,11 +54,20 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms768m -Xmx768m"
       - bootstrap.memory_lock=false
       - cluster.routing.allocation.disk.threshold_enabled=false
       - action.destructive_requires_name=true
       - network.host=0.0.0.0
+      - cluster.name=docker-cluster
+      - node.name=es01
+      - cluster.initial_master_nodes=es01
+      - bootstrap.system_call_filter=false
+      - "indices.query.bool.max_clause_count=8192"
+      - "search.max_buckets=10000"
+      - "thread_pool.write.queue_size=1000"
+      - "thread_pool.search.queue_size=1000"
+      - "thread_pool.get.queue_size=1000"
     ulimits:
       memlock:
         soft: -1
@@ -80,7 +89,7 @@ services:
     deploy:
       resources:
         limits:
-          memory: 1G
+          memory: 1.5G
 
   # Kibana - веб-интерфейс для Elasticsearch
   kibana:
