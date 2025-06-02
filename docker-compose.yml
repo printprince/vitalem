@@ -258,6 +258,64 @@ services:
     networks:
       - app-network
 
+  # Calendar Service - сервис для работы с календарем и записями
+  # Управляет расписанием врачей, бронированием слотов и записями пациентов
+  calendar_service:
+    build:
+      context: .
+      dockerfile: ./CalendarService/Dockerfile
+    container_name: calendar_service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=61324
+      - DB_NAME=vitalem_db
+      - DB_SSLMODE=disable
+      - NOTIFICATION_URL=http://notification_service:8806/api/v1
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - LOGGER_LEVEL=info
+    ports:
+      - "8805:8805"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      notification_service:
+        condition: service_started
+    networks:
+      - app-network
+
+  # Notification Service - сервис для отправки уведомлений
+  # Отправляет email, SMS, Telegram уведомления пользователям
+  notification_service:
+    build:
+      context: .
+      dockerfile: ./NotificationService/Dockerfile
+    container_name: notification_service
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=61324
+      - DB_NAME=vitalem_db
+      - DB_SSLMODE=disable
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - LOG_LEVEL=info
+      - SMTP_HOST=smtp.gmail.com
+      - SMTP_PORT=465
+      - SMTP_USERNAME=asylknazbaj@gmail.com
+      - SMTP_PASSWORD=fsmi gwrw cdso pufr
+      - SMTP_FROM=Notification Service <asylknazbaj@gmail.com>
+      - TELEGRAM_BOT_TOKEN=8134913914:AAG51fnF2uuIn9go3JEXQKcUEy9smDR5Bpg
+      - TELEGRAM_CHAT_ID=-4705009453
+    ports:
+      - "8806:8806"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - app-network
+
 networks:
   app-network:
     driver: bridge
