@@ -149,6 +149,7 @@ func main() {
 	doctorHandlers := handlers.NewDoctorHandlers(doctorService, loggerClient)
 
 	e := echo.New()
+	e.Validator = middleware.NewValidator()
 	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
 	e.Use(middleware.CORSMiddleware())

@@ -10,7 +10,7 @@ import (
 // PatientCreateRequest структура запроса для создания пациента
 type PatientCreateRequest struct {
 	UserID              uuid.UUID `json:"user_id" binding:"required"`
-	IIN                 string    `json:"iin" binding: "required,len=12"`
+	IIN                 string    `json:"iin" binding:"required,len=12"`
 	Name                string    `json:"name" binding:"required"`
 	Surname             string    `json:"surname" binding:"required"`
 	DateOfBirth         time.Time `json:"date_of_birth" binding:"required"`
