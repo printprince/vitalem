@@ -2,20 +2,15 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Копируем utils (общие компоненты)
+# Создаем структуру директорий для правильной работы с replace директивами
 COPY ./utils ./utils
+COPY ./identity_service ./identity_service
 
-# Копируем go.mod и go.sum
-COPY ./identity_service/go.mod ./identity_service/go.sum ./
+# Переходим в директорию сервиса для сборки
+WORKDIR /app/identity_service
 
-# Загружаем зависимости
-RUN go mod download
-
-# Копируем исходный код
-COPY ./identity_service .
-
-# Собираем приложение
-RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api
+# Загружаем зависимости и собираем приложение
+RUN go mod download && go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api
 
 # Финальный образ
 FROM alpine:latest
@@ -26,8 +21,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 WORKDIR /app
 
 # Копируем исполняемый файл из образа сборки
-COPY --from=builder /app/identity_service .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /app/identity_service/identity_service .
+COPY --from=builder /app/identity_service/config.yaml .
 
 EXPOSE 8801
 

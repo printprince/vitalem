@@ -2,16 +2,14 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Копируем utils (общие компоненты)
+# Создаем структуру директорий для правильной работы с replace директивами
 COPY ./utils ./utils
+COPY ./specialist_service ./specialist_service
 
-COPY ./specialist_service/go.mod ./specialist_service/go.sum ./
+# Переходим в директорию сервиса для сборки
+WORKDIR /app/specialist_service
 
-RUN go mod download
-
-COPY ./specialist_service .
-
-RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o specialist_service ./cmd/api
+RUN go mod download && go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o specialist_service ./cmd/api
 
 # Финальный образ
 FROM alpine:latest
@@ -20,8 +18,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 
 WORKDIR /app
 
-COPY --from=builder /app/specialist_service .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /app/specialist_service/specialist_service .
+COPY --from=builder /app/specialist_service/config.yaml .
 
 EXPOSE 8803
 
