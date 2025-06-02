@@ -10,32 +10,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"github.com/printprince/vitalem/patient_service/internal/config"
 	"github.com/printprince/vitalem/patient_service/internal/handlers"
-	jwtmiddleware "github.com/printprince/vitalem/patient_service/internal/middleware"
 	"github.com/printprince/vitalem/patient_service/internal/models"
 	"github.com/printprince/vitalem/patient_service/internal/repository"
 	"github.com/printprince/vitalem/patient_service/internal/service"
+	"github.com/printprince/vitalem/utils/middleware"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
-
-// CustomValidator содержит валидатор запросов
-type CustomValidator struct {
-	validator *validator.Validate
-}
-
-// Validate проверяет данные на соответствие правилам валидации
-func (cv *CustomValidator) Validate(i interface{}) error {
-	if err := cv.validator.Struct(i); err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
-	}
-	return nil
-}
 
 var loggerClient *logger.Client
 
@@ -164,25 +150,17 @@ func main() {
 	patientHandlers := handlers.NewPatientHandlers(patientService, loggerClient)
 
 	e := echo.New()
-	e.Validator = &CustomValidator{validator: validator.New()}
 	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
-	e.Use(echomiddleware.CORSWithConfig(echomiddleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-		ExposeHeaders:    []string{echo.HeaderContentLength},
-		AllowCredentials: true,
-		MaxAge:           86400, // 24 часа
-	}))
+	e.Use(middleware.CORSMiddleware())
 
 	// Регистрируем публичные маршруты
 	publicRoutes := e.Group("/public")
 	patientHandlers.RegisterPublicRoutes(publicRoutes)
 
-	// Регистрируем защищенные маршруты с JWT middleware
-	protectedRoutes := e.Group("")
-	protectedRoutes.Use(jwtmiddleware.JWTMiddleware(cfg.JWT.Secret))
+	// Настройка защищенных маршрутов
+	protectedRoutes := e.Group("/api/v1")
+	protectedRoutes.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 	patientHandlers.RegisterProtectedRoutes(protectedRoutes)
 
 	// Создаем канал для отслеживания сигналов завершения

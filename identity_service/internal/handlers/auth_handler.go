@@ -1,14 +1,13 @@
 package handlers
 
 import (
-	"identity_service/internal/middleware"
 	"identity_service/internal/service"
 	"net/http"
 	"strings"
 
-	"github.com/printprince/vitalem/logger_service/pkg/logger"
-
 	"github.com/labstack/echo/v4"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
+	"github.com/printprince/vitalem/utils/middleware"
 )
 
 type AuthHandler struct {
@@ -188,14 +187,12 @@ func RegisterRoutes(e *echo.Echo, authService *service.AuthService, logger *logg
 	handler := NewAuthHandler(authService, logger)
 
 	// Публичные маршруты
-	// Все маршруты, которые не требуют аутентификации
-	e.POST("/login", handler.Login)
-	e.POST("/register", handler.Register)
-	e.GET("/validate-token", handler.ValidateToken)
+	e.POST("/auth/login", handler.Login)
+	e.POST("/auth/register", handler.Register)
+	e.POST("/auth/validate", handler.ValidateToken)
 
-	// Защищенные маршруты
-	// Маршруты, которые требуют аутентификации
-	protected := e.Group("/protected")
-	protected.Use(middleware.JWTMiddleware(authService.GetJWTSecret()))
-	protected.GET("/user", handler.GetUser)
+	// Приватные маршруты для получения информации о пользователе
+	protectedGroup := e.Group("/auth")
+	protectedGroup.Use(middleware.JWTMiddleware(authService.GetJWTSecret()))
+	protectedGroup.GET("/user", handler.GetUser)
 }

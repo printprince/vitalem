@@ -7,14 +7,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/labstack/echo/v4"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/printprince/vitalem/logger_service/internal/config"
 	"github.com/printprince/vitalem/logger_service/internal/handlers"
-	"github.com/printprince/vitalem/logger_service/internal/middleware"
 	"github.com/printprince/vitalem/logger_service/internal/service"
 	"github.com/printprince/vitalem/logger_service/pkg/elasticsearch"
-
-	"github.com/labstack/echo/v4"
-	echoMiddleware "github.com/labstack/echo/v4/middleware"
+	"github.com/printprince/vitalem/utils/middleware"
 )
 
 // LoggerService - это сервис для логирования событий в наших микросервисах
@@ -77,22 +76,16 @@ func main() {
 
 	// Инициализируем echo
 	e := echo.New()
-	e.Use(echoMiddleware.Logger())
-	e.Use(echoMiddleware.Recover())
-	e.Use(echoMiddleware.CORSWithConfig(echoMiddleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization, "X-API-Key"},
-		ExposeHeaders:    []string{echo.HeaderContentLength},
-		AllowCredentials: true,
-		MaxAge:           86400, // 24 часа
-	}))
+	e.Validator = middleware.NewValidator()
+	e.Use(echomiddleware.Logger())
+	e.Use(echomiddleware.Recover())
+	e.Use(middleware.CORSMiddleware())
 
 	// Регистрируем маршруты
 	handlers.RegisterRoutes(e, logService, logger)
 
 	// Защищенные маршруты (требуют JWT аутентификации)
-	protectedGroup := e.Group("/protected")
+	protectedGroup := e.Group("/api/v1")
 	protectedGroup.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 
 	// Настройка защищенных маршрутов

@@ -2,8 +2,14 @@
 FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
-COPY . .
+
+# Копируем utils (общие компоненты)
+COPY ../utils ./utils
+
+COPY go.mod go.sum ./
 RUN go mod download
+
+COPY . .
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o logger_service ./cmd/api
 
 FROM alpine:latest

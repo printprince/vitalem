@@ -16,8 +16,9 @@ import (
 	"time"
 
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
+	"github.com/printprince/vitalem/utils/middleware"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -95,16 +96,14 @@ func main() {
 
 	// Инициализируем echo
 	e := echo.New()
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins:     []string{"*"},
-		AllowMethods:     []string{echo.GET, echo.PUT, echo.POST, echo.DELETE, echo.OPTIONS},
-		AllowHeaders:     []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
-		ExposeHeaders:    []string{echo.HeaderContentLength},
-		AllowCredentials: true,
-		MaxAge:           86400, // 24 часа
-	}))
+	e.Validator = middleware.NewValidator()
+	e.Use(echomiddleware.Logger())
+	e.Use(echomiddleware.Recover())
+	e.Use(middleware.CORSMiddleware())
+
+	// Настройка защищенных маршрутов
+	protected := e.Group("/api/v1")
+	protected.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 
 	// Инициализируем наши 3 слоя - репозиторий, сервис и обработчики
 	userRepository := repository.NewUserRepository(db)

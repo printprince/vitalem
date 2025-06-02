@@ -2,8 +2,11 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
+# Копируем utils (общие компоненты)
+COPY ../utils ./utils
+
 # Копируем go.mod и go.sum
-COPY go.mod ./
+COPY go.mod go.sum ./
 
 # Загружаем зависимости
 RUN go mod download
