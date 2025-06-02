@@ -45,7 +45,7 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		UserID:              event.UserID,
 		Name:                "Не указано",
 		Surname:             "Не указана",
-		DateOfBirth:         time.Now(),
+		DateOfBirth:         models.Date{Time: time.Now()},
 		Gender:              "Не указан",
 		Email:               event.Email,
 		Phone:               "Не указан",
