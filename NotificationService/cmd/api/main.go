@@ -19,6 +19,7 @@ import (
 	"NotificationService/internal/domain/repository"
 	"NotificationService/internal/infrastructure/codegen"
 	"NotificationService/internal/infrastructure/email"
+	"NotificationService/internal/infrastructure/messaging"
 	"NotificationService/internal/infrastructure/telegram"
 	"NotificationService/internal/service"
 	"NotificationService/pkg/logger"
@@ -73,6 +74,18 @@ func main() {
 	e.Use(middleware.Recover())
 
 	router.SetupRoutes(e, notifService)
+
+	// Initialize and start RabbitMQ consumer
+	consumer, err := messaging.NewConsumer(cfg.RabbitMQ.URL, notifService, logg)
+	if err != nil {
+		logg.Fatal("Failed to create RabbitMQ consumer", "error", err)
+	}
+	defer consumer.Close()
+
+	ctx := context.Background()
+	if err := consumer.StartConsumer(ctx); err != nil {
+		logg.Fatal("Failed to start RabbitMQ consumer", "error", err)
+	}
 
 	// 8. Запуск HTTP сервера с graceful shutdown
 	serverAddr := ":" + cfg.Server.Port

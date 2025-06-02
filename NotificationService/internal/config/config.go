@@ -13,11 +13,12 @@ import (
 
 // Config основная структура конфигурации приложения
 type Config struct {
-	Server   ServerConfig   `yaml:"api"`
+	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
+	RabbitMQ RabbitMQConfig `yaml:"rabbitmq"`
 	Logger   LoggerConfig   `yaml:"logger"`
 	Auth     AuthConfig     `yaml:"auth"`
-	SMTP     SMTPConfig     `yaml:"smtp"`
+	SMTP     SMTPConfig     `yaml:"email"`
 	Telegram TelegramConfig `yaml:"telegram"`
 }
 
@@ -153,4 +154,9 @@ func overrideFromEnv(cfg *Config) {
 	if chatID := os.Getenv("TELEGRAM_CHAT_ID"); chatID != "" {
 		cfg.Telegram.ChatID = chatID
 	}
+}
+
+// RabbitMQConfig конфигурация RabbitMQ
+type RabbitMQConfig struct {
+	URL string `yaml:"url"`
 }
