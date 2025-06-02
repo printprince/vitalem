@@ -19,8 +19,10 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 WORKDIR /app
 
 COPY --from=builder /app/CalendarService/calendar_service .
-COPY --from=builder /app/CalendarService/configs/config.yaml .
+# Создаем папку configs и копируем туда конфигурационный файл
+RUN mkdir -p configs
+COPY --from=builder /app/CalendarService/configs/config.yaml ./configs/
 
-EXPOSE 8086
+EXPOSE 8805
 
 CMD ["./calendar_service"] 

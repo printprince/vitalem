@@ -19,8 +19,10 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 WORKDIR /app
 
 COPY --from=builder /app/NotificationService/notification_service .
-COPY --from=builder /app/NotificationService/configs/config.yaml .
+# Создаем папку configs и копируем туда конфигурационный файл
+RUN mkdir -p configs
+COPY --from=builder /app/NotificationService/configs/config.yaml ./configs/
 
-EXPOSE 8081
+EXPOSE 8806
 
 CMD ["./notification_service"] 
