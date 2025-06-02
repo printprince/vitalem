@@ -231,13 +231,8 @@ func (h *PatientHandlers) UpdatePatientProfile(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request format")
 	}
 
-	// Валидация запроса
-	if err := c.Validate(&req); err != nil {
-		h.logger.Error("Validation error", map[string]interface{}{
-			"error": err.Error(),
-		})
-		return err
-	}
+	// Для обновления профиля НЕ проводим строгую валидацию (убираем c.Validate)
+	// Позволяем частичные обновления
 
 	// Обновляем или создаем профиль пациента
 	patient, err := h.patientService.UpdatePatientProfile(c.Request().Context(), userID, &req)

@@ -185,22 +185,55 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 	}
 
 	// Обновляем поля существующего профиля
-	// Тут та же логика, что и в UpdatePatient, но с поиском по UserID
-	patient.Name = req.Name
-	patient.Surname = req.Surname
-	patient.DateOfBirth = req.DateOfBirth
-	patient.Gender = req.Gender
-	patient.Email = req.Email
-	patient.Phone = req.Phone
-	patient.Height = req.Height
-	patient.Weight = req.Weight
-	patient.PhysActivity = req.PhysActivity
-	patient.Diagnoses = req.Diagnoses
-	patient.AdditionalDiagnoses = req.AdditionalDiagnoses
-	patient.Allergens = req.Allergens
-	patient.AdditionalAllergens = req.AdditionalAllergens
-	patient.Diet = req.Diet
-	patient.AdditionalDiets = req.AdditionalDiets
+	// Обновляем только НЕ пустые поля из запроса (гибкое обновление)
+	if req.Name != "" {
+		patient.Name = req.Name
+	}
+	if req.Surname != "" {
+		patient.Surname = req.Surname
+	}
+	if !req.DateOfBirth.IsZero() {
+		patient.DateOfBirth = req.DateOfBirth
+	}
+	if req.Gender != "" {
+		patient.Gender = req.Gender
+	}
+	if req.Email != "" {
+		patient.Email = req.Email
+	}
+	if req.Phone != "" {
+		patient.Phone = req.Phone
+	}
+	if req.Height != 0 {
+		patient.Height = req.Height
+	}
+	if req.Weight != 0 {
+		patient.Weight = req.Weight
+	}
+	if req.PhysActivity != "" {
+		patient.PhysActivity = req.PhysActivity
+	}
+	if req.IIN != "" {
+		patient.IIN = req.IIN
+	}
+	if len(req.Diagnoses) > 0 {
+		patient.Diagnoses = req.Diagnoses
+	}
+	if len(req.AdditionalDiagnoses) > 0 {
+		patient.AdditionalDiagnoses = req.AdditionalDiagnoses
+	}
+	if len(req.Allergens) > 0 {
+		patient.Allergens = req.Allergens
+	}
+	if len(req.AdditionalAllergens) > 0 {
+		patient.AdditionalAllergens = req.AdditionalAllergens
+	}
+	if len(req.Diet) > 0 {
+		patient.Diet = req.Diet
+	}
+	if len(req.AdditionalDiets) > 0 {
+		patient.AdditionalDiets = req.AdditionalDiets
+	}
 
 	// Сохраняем изменения
 	updatedPatient, err := s.patientRepo.Update(ctx, patient)
