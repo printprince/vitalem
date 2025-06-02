@@ -3,16 +3,16 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Копируем utils (общие компоненты)
-COPY ../utils ./utils
+COPY ./utils ./utils
 
 # Копируем go.mod и go.sum
-COPY go.mod go.sum ./
+COPY ./identity_service/go.mod ./identity_service/go.sum ./
 
 # Загружаем зависимости
 RUN go mod download
 
 # Копируем исходный код
-COPY . .
+COPY ./identity_service .
 
 # Собираем приложение
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api

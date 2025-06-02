@@ -135,8 +135,8 @@ services:
   # Обогащает и сохраняет в Elasticsearch для последующего анализа
   logger_service:
     build:
-      context: ./logger_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./logger_service/Dockerfile
     container_name: logger_service
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
@@ -154,8 +154,8 @@ services:
   # Первый сервис в цепочке взаимодействия с системой
   identity_service:
     build:
-      context: ./identity_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./identity_service/Dockerfile
     container_name: identity_service
     environment:
       - DB_HOST=postgres
@@ -189,8 +189,8 @@ services:
   # Интегрируется с другими сервисами через RabbitMQ и прямые HTTP-вызовы
   specialist_service:
     build:
-      context: ./specialist_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./specialist_service/Dockerfile
     container_name: specialist_service
     environment:
       - DB_HOST=postgres
@@ -226,8 +226,8 @@ services:
   # Основной сервис для пользователей-пациентов системы
   patient_service:
     build:
-      context: ./patient_service
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./patient_service/Dockerfile
     container_name: patient_service
     environment:
       - DB_HOST=postgres

@@ -3,13 +3,13 @@ FROM golang:1.24-alpine AS builder
 WORKDIR /app
 
 # Копируем utils (общие компоненты)
-COPY ../utils ./utils
+COPY ./utils ./utils
 
-COPY go.mod go.sum ./
+COPY ./patient_service/go.mod ./patient_service/go.sum ./
 
 RUN go mod download
 
-COPY . .
+COPY ./patient_service .
 
 RUN go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o patient_service ./cmd/api
 
