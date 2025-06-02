@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -200,4 +201,341 @@ func (h *EventHandler) CreateSlots(c echo.Context) error {
 	}
 
 	return utils.JSONSuccess(c, map[string]string{"message": "slots created successfully"})
+}
+
+// CreateSchedule - POST /schedule - автоматическое создание графика
+func (h *EventHandler) CreateSchedule(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	// Получаем doctorID из контекста
+	doctorID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return utils.JSONError(c, http.StatusUnauthorized, "unauthorized")
+	}
+
+	type ScheduleRequest struct {
+		StartDate       string `json:"start_date"`       // "2024-06-03"
+		EndDate         string `json:"end_date"`         // "2024-06-07"
+		WorkDays        []int  `json:"work_days"`        // [1,2,3,4,5] (Пн-Пт)
+		StartTime       string `json:"start_time"`       // "09:00"
+		EndTime         string `json:"end_time"`         // "17:00"
+		SlotDuration    int    `json:"slot_duration"`    // 30 (минут)
+		BreakStart      string `json:"break_start"`      // "12:00"
+		BreakEnd        string `json:"break_end"`        // "13:00"
+		Title           string `json:"title"`            // "Консультация терапевта"
+		Description     string `json:"description"`      // "Прием пациентов"
+		AppointmentType string `json:"appointment_type"` // "offline" или "online"
+	}
+
+	var req ScheduleRequest
+	if err := c.Bind(&req); err != nil {
+		return utils.JSONError(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	// Парсим даты
+	startDate, err := time.Parse("2006-01-02", req.StartDate)
+	if err != nil {
+		return utils.JSONError(c, http.StatusBadRequest, "invalid start_date format (use YYYY-MM-DD)")
+	}
+
+	endDate, err := time.Parse("2006-01-02", req.EndDate)
+	if err != nil {
+		return utils.JSONError(c, http.StatusBadRequest, "invalid end_date format (use YYYY-MM-DD)")
+	}
+
+	// Валидация
+	if req.SlotDuration <= 0 || req.SlotDuration > 240 {
+		return utils.JSONError(c, http.StatusBadRequest, "slot_duration must be between 1 and 240 minutes")
+	}
+
+	slotsCreated := 0
+
+	// Генерируем слоты для каждого дня
+	for d := startDate; !d.After(endDate); d = d.AddDate(0, 0, 1) {
+		weekday := int(d.Weekday())
+		if weekday == 0 {
+			weekday = 7
+		} // Воскресенье = 7
+
+		// Проверяем, рабочий ли день
+		isWorkDay := false
+		for _, wd := range req.WorkDays {
+			if wd == weekday {
+				isWorkDay = true
+				break
+			}
+		}
+
+		if !isWorkDay {
+			continue
+		}
+
+		// Создаем слоты для этого дня
+		daySlots, err := h.generateDaySlots(d, req, doctorID)
+		if err != nil {
+			return utils.JSONError(c, http.StatusBadRequest, err.Error())
+		}
+
+		// Сохраняем слоты в БД
+		for _, slot := range daySlots {
+			if err := h.service.CreateEvent(ctx, slot); err != nil {
+				h.logger.Error("Failed to create slot:", err)
+				return utils.JSONError(c, http.StatusInternalServerError, "failed to create slot")
+			}
+			slotsCreated++
+		}
+	}
+
+	return utils.JSONSuccess(c, map[string]interface{}{
+		"message":       "schedule created successfully",
+		"slots_created": slotsCreated,
+	})
+}
+
+// Генерирует слоты для одного дня
+func (h *EventHandler) generateDaySlots(date time.Time, req struct {
+	StartDate       string `json:"start_date"`
+	EndDate         string `json:"end_date"`
+	WorkDays        []int  `json:"work_days"`
+	StartTime       string `json:"start_time"`
+	EndTime         string `json:"end_time"`
+	SlotDuration    int    `json:"slot_duration"`
+	BreakStart      string `json:"break_start"`
+	BreakEnd        string `json:"break_end"`
+	Title           string `json:"title"`
+	Description     string `json:"description"`
+	AppointmentType string `json:"appointment_type"`
+}, doctorID uuid.UUID) ([]*models.Event, error) {
+	var slots []*models.Event
+
+	// Парсим время начала и конца работы
+	startTime, err := time.Parse("15:04", req.StartTime)
+	if err != nil {
+		return nil, fmt.Errorf("invalid start_time format (use HH:MM)")
+	}
+
+	endTime, err := time.Parse("15:04", req.EndTime)
+	if err != nil {
+		return nil, fmt.Errorf("invalid end_time format (use HH:MM)")
+	}
+
+	// Парсим время обеда (если указано)
+	var breakStart, breakEnd time.Time
+	hasBreak := req.BreakStart != "" && req.BreakEnd != ""
+	if hasBreak {
+		breakStart, err = time.Parse("15:04", req.BreakStart)
+		if err != nil {
+			return nil, fmt.Errorf("invalid break_start format (use HH:MM)")
+		}
+		breakEnd, err = time.Parse("15:04", req.BreakEnd)
+		if err != nil {
+			return nil, fmt.Errorf("invalid break_end format (use HH:MM)")
+		}
+	}
+
+	// Создаем начальное время для данного дня
+	currentTime := time.Date(date.Year(), date.Month(), date.Day(),
+		startTime.Hour(), startTime.Minute(), 0, 0, date.Location())
+
+	endDateTime := time.Date(date.Year(), date.Month(), date.Day(),
+		endTime.Hour(), endTime.Minute(), 0, 0, date.Location())
+
+	slotDuration := time.Duration(req.SlotDuration) * time.Minute
+
+	// Генерируем слоты
+	for currentTime.Before(endDateTime) {
+		slotEnd := currentTime.Add(slotDuration)
+
+		// Проверяем, не попадает ли слот на время обеда
+		if hasBreak {
+			breakStartDateTime := time.Date(date.Year(), date.Month(), date.Day(),
+				breakStart.Hour(), breakStart.Minute(), 0, 0, date.Location())
+			breakEndDateTime := time.Date(date.Year(), date.Month(), date.Day(),
+				breakEnd.Hour(), breakEnd.Minute(), 0, 0, date.Location())
+
+			// Если слот пересекается с обедом, пропускаем
+			if currentTime.Before(breakEndDateTime) && slotEnd.After(breakStartDateTime) {
+				// Если мы в обеде, переходим к концу обеда
+				if currentTime.Before(breakEndDateTime) {
+					currentTime = breakEndDateTime
+					continue
+				}
+			}
+		}
+
+		// Если слот выходит за рабочее время, прекращаем
+		if slotEnd.After(endDateTime) {
+			break
+		}
+
+		// Создаем слот
+		slot := &models.Event{
+			ID:              uuid.New(),
+			Title:           req.Title,
+			Description:     req.Description,
+			StartTime:       currentTime,
+			EndTime:         slotEnd,
+			SpecialistID:    doctorID,
+			Status:          "available",
+			AppointmentType: req.AppointmentType,
+			CreatedAt:       time.Now(),
+			UpdatedAt:       time.Now(),
+		}
+
+		slots = append(slots, slot)
+		currentTime = slotEnd
+	}
+
+	return slots, nil
+}
+
+// GetAvailableSlots - GET /specialists/:specialist_id/slots - для пациентов
+func (h *EventHandler) GetAvailableSlots(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	// Получаем ID специалиста из URL
+	specialistIDStr := c.Param("specialist_id")
+	specialistID, err := uuid.Parse(specialistIDStr)
+	if err != nil {
+		return utils.JSONError(c, http.StatusBadRequest, "invalid specialist_id")
+	}
+
+	// Дополнительные фильтры из query params
+	status := c.QueryParam("status")        // available, booked, canceled
+	appointmentType := c.QueryParam("type") // online, offline
+	dateFrom := c.QueryParam("from")        // 2024-06-03
+	dateTo := c.QueryParam("to")            // 2024-06-07
+
+	// Получаем все события специалиста
+	events, err := h.service.GetEventsBySpecialist(ctx, specialistID)
+	if err != nil {
+		return utils.JSONError(c, http.StatusInternalServerError, "failed to get events")
+	}
+
+	// Фильтруем результаты
+	var filteredEvents []*models.Event
+	for _, event := range events {
+		// Фильтр по статусу (по умолчанию только available)
+		if status == "" && event.Status != "available" {
+			continue
+		}
+		if status != "" && event.Status != status {
+			continue
+		}
+
+		// Фильтр по типу приема
+		if appointmentType != "" && event.AppointmentType != appointmentType {
+			continue
+		}
+
+		// Фильтр по дате
+		if dateFrom != "" {
+			fromDate, parseErr := time.Parse("2006-01-02", dateFrom)
+			if parseErr == nil && event.StartTime.Before(fromDate) {
+				continue
+			}
+		}
+
+		if dateTo != "" {
+			toDate, parseErr := time.Parse("2006-01-02", dateTo)
+			if parseErr == nil && event.StartTime.After(toDate.AddDate(0, 0, 1)) {
+				continue
+			}
+		}
+
+		filteredEvents = append(filteredEvents, event)
+	}
+
+	// Сортируем по времени начала
+	for i := 0; i < len(filteredEvents)-1; i++ {
+		for j := i + 1; j < len(filteredEvents); j++ {
+			if filteredEvents[i].StartTime.After(filteredEvents[j].StartTime) {
+				filteredEvents[i], filteredEvents[j] = filteredEvents[j], filteredEvents[i]
+			}
+		}
+	}
+
+	return utils.JSONSuccess(c, map[string]interface{}{
+		"specialist_id": specialistID,
+		"total_slots":   len(filteredEvents),
+		"slots":         filteredEvents,
+	})
+}
+
+// GetDoctorInfo - GET /specialists/:specialist_id/info - информация о враче + его слоты
+func (h *EventHandler) GetDoctorInfo(c echo.Context) error {
+	ctx := c.Request().Context()
+
+	// Получаем ID специалиста из URL
+	specialistIDStr := c.Param("specialist_id")
+	specialistID, err := uuid.Parse(specialistIDStr)
+	if err != nil {
+		return utils.JSONError(c, http.StatusBadRequest, "invalid specialist_id")
+	}
+
+	// Получаем слоты врача
+	events, err := h.service.GetEventsBySpecialist(ctx, specialistID)
+	if err != nil {
+		return utils.JSONError(c, http.StatusInternalServerError, "failed to get doctor events")
+	}
+
+	// Фильтруем только доступные слоты
+	var availableSlots []*models.Event
+	for _, event := range events {
+		if event.Status == "available" {
+			availableSlots = append(availableSlots, event)
+		}
+	}
+
+	// Сортируем по времени начала
+	for i := 0; i < len(availableSlots)-1; i++ {
+		for j := i + 1; j < len(availableSlots); j++ {
+			if availableSlots[i].StartTime.After(availableSlots[j].StartTime) {
+				availableSlots[i], availableSlots[j] = availableSlots[j], availableSlots[i]
+			}
+		}
+	}
+
+	// Считаем статистику слотов
+	totalSlots := len(events)
+	availableSlotsCount := len(availableSlots)
+	bookedSlotsCount := 0
+	for _, event := range events {
+		if event.Status == "booked" {
+			bookedSlotsCount++
+		}
+	}
+
+	return utils.JSONSuccess(c, map[string]interface{}{
+		"specialist_id":     specialistID,
+		"total_slots":       totalSlots,
+		"available_slots":   availableSlotsCount,
+		"booked_slots":      bookedSlotsCount,
+		"upcoming_slots":    availableSlots[:min(5, len(availableSlots))], // Ближайшие 5 слотов
+		"appointment_types": getUniqueAppointmentTypes(events),
+	})
+}
+
+// Вспомогательная функция для получения уникальных типов приемов
+func getUniqueAppointmentTypes(events []*models.Event) []string {
+	typeMap := make(map[string]bool)
+	for _, event := range events {
+		if event.AppointmentType != "" {
+			typeMap[event.AppointmentType] = true
+		}
+	}
+
+	var types []string
+	for appointmentType := range typeMap {
+		types = append(types, appointmentType)
+	}
+	return types
+}
+
+// Вспомогательная функция min
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

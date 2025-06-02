@@ -26,6 +26,7 @@ func (h *NotificationHandler) RegisterRoutes(g *echo.Group) {
 	g.GET("/notifications/:id", h.GetByID)
 	g.GET("/notifications/recipient/:recipientId", h.ListByRecipient)
 	g.PUT("/notifications/:id/sent", h.MarkAsSent)
+	g.GET("/notifications/my", h.GetMyNotifications)
 }
 
 // Create создает новое уведомление
@@ -93,4 +94,25 @@ func (h *NotificationHandler) MarkAsSent(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+// GetMyNotifications возвращает уведомления текущего пользователя
+func (h *NotificationHandler) GetMyNotifications(c echo.Context) error {
+	// Получаем ID пользователя из JWT токена
+	userIDVal := c.Get("user_id")
+	userID, ok := userIDVal.(uuid.UUID)
+	if !ok {
+		return utils.JSONError(c, http.StatusUnauthorized, "unauthorized: invalid user ID")
+	}
+
+	list, err := h.service.List(c.Request().Context(), userID)
+	if err != nil {
+		return utils.JSONError(c, http.StatusNotFound, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"user_id":       userID,
+		"total_count":   len(list),
+		"notifications": list,
+	})
 }

@@ -186,10 +186,15 @@ func (h *AuthHandler) GetUser(c echo.Context) error {
 func RegisterRoutes(e *echo.Echo, authService *service.AuthService, logger *logger.Client) {
 	handler := NewAuthHandler(authService, logger)
 
-	// Публичные маршруты
+	// Основные маршруты с префиксом /auth (рекомендуемые)
 	e.POST("/auth/login", handler.Login)
 	e.POST("/auth/register", handler.Register)
 	e.POST("/auth/validate", handler.ValidateToken)
+
+	// Дублирующие маршруты для обратной совместимости
+	e.POST("/login", handler.Login)            // обратная совместимость
+	e.POST("/register", handler.Register)      // обратная совместимость
+	e.POST("/validate", handler.ValidateToken) // обратная совместимость
 
 	// Приватные маршруты для получения информации о пользователе
 	protectedGroup := e.Group("/auth")

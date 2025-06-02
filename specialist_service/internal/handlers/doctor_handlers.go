@@ -146,6 +146,9 @@ func (h *DoctorHandlers) GetDoctorByUserID(c echo.Context) error {
 }
 
 func (h *DoctorHandlers) GetAllDoctors(c echo.Context) error {
+	// Получаем параметр фильтрации по специальности (роли)
+	role := c.QueryParam("role") // ?role=Кардиолог
+
 	doctors, err := h.doctorService.GetAllDoctors(c.Request().Context())
 	if err != nil {
 		h.logger.Error("Failed to get all doctors", map[string]interface{}{
@@ -154,7 +157,29 @@ func (h *DoctorHandlers) GetAllDoctors(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get doctors")
 	}
 
-	return c.JSON(http.StatusOK, doctors)
+	// Если указана роль/специальность, фильтруем результаты
+	if role != "" {
+		var filteredDoctors []*models.DoctorResponse
+		for _, doctor := range doctors {
+			// Проверяем, есть ли указанная роль в массиве ролей врача
+			for _, doctorRole := range doctor.Roles {
+				if doctorRole == role {
+					filteredDoctors = append(filteredDoctors, doctor)
+					break // Найдена роль, добавляем врача и переходим к следующему
+				}
+			}
+		}
+		return c.JSON(http.StatusOK, map[string]interface{}{
+			"role":          role,
+			"total_doctors": len(filteredDoctors),
+			"doctors":       filteredDoctors,
+		})
+	}
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total_doctors": len(doctors),
+		"doctors":       doctors,
+	})
 }
 
 func (h *DoctorHandlers) UpdateDoctor(c echo.Context) error {

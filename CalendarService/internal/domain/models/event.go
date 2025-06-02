@@ -17,7 +17,7 @@ type Event struct {
 	EndTime         time.Time  `gorm:"not null" json:"end_time"`
 	SpecialistID    uuid.UUID  `gorm:"type:uuid;not null;index" json:"specialist_id"`
 	PatientID       *uuid.UUID `gorm:"type:uuid;index" json:"patient_id"`
-	Status          string     `gorm:"type:varchar(20);not null;default:'available';check:status IN ('available', 'booked', 'canceled', 'pending')" json:"status"`
+	Status          string     `gorm:"type:varchar(20);not null;default:'available';check:status IN ('available', 'booked', 'canceled')" json:"status"`
 	AppointmentType string     `gorm:"type:varchar(10);not null;default:'offline'" json:"appointment_type"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`

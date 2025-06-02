@@ -39,11 +39,16 @@ func NewRouter(svc *service.CalendarService, log *logger.Logger) *Router {
 	api.Use(utilsMiddleware.JWTMiddleware(jwtSecret))
 	// Маршруты событий
 	api.POST("/", h.CreateEvent)             // Создать событие
-	api.GET("//:id", h.GetEventByID)         // Получить событие по ID
+	api.GET("/:id", h.GetEventByID)          // Получить событие по ID
 	api.GET("/", h.GetEvents)                // Список событий (можно с фильтрами)
 	api.POST("/:id/book", h.BookEvent)       // Забронировать событие
 	api.POST("/:id/cancel", h.CancelBooking) // Отменить бронь
-	api.POST("/slots", h.CreateSlots)
+	api.POST("/slots", h.CreateSlots)        // Создать слоты вручную
+	api.POST("/schedule", h.CreateSchedule)  // 🆕 Создать график автоматически
+
+	// 🆕 Удобные эндпоинты для пациентов
+	api.GET("/specialists/:specialist_id/slots", h.GetAvailableSlots) // Слоты врача
+	api.GET("/specialists/:specialist_id/info", h.GetDoctorInfo)      // Информация о враче + статистика
 
 	return &Router{
 		echo:    e,
