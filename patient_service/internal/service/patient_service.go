@@ -119,7 +119,7 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 	// TODO: Добавить частичное обновление с проверкой заполненности полей
 	patient.Name = req.Name
 	patient.Surname = req.Surname
-	patient.DateOfBirth = req.DateOfBirth
+	patient.DateOfBirth = req.DateOfBirth.Time
 	patient.Gender = req.Gender
 	patient.Email = req.Email
 	patient.Phone = req.Phone
@@ -193,7 +193,7 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 		patient.Surname = req.Surname
 	}
 	if !req.DateOfBirth.IsZero() {
-		patient.DateOfBirth = req.DateOfBirth
+		patient.DateOfBirth = req.DateOfBirth.Time
 	}
 	if req.Gender != "" {
 		patient.Gender = req.Gender

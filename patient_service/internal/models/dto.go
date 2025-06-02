@@ -1,11 +1,41 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
 )
+
+// Date кастомный тип для гибкого парсинга дат
+type Date struct {
+	time.Time
+}
+
+// UnmarshalJSON парсит дату из разных форматов
+func (d *Date) UnmarshalJSON(data []byte) error {
+	var dateStr string
+	if err := json.Unmarshal(data, &dateStr); err != nil {
+		return err
+	}
+
+	// Пробуем разные форматы
+	formats := []string{
+		"2006-01-02",           // 2004-10-27
+		"2006-01-02T15:04:05Z", // 2004-10-27T00:00:00Z
+		"02.01.2006",           // 27.10.2004
+	}
+
+	for _, format := range formats {
+		if t, err := time.Parse(format, dateStr); err == nil {
+			d.Time = t
+			return nil
+		}
+	}
+
+	return &time.ParseError{Value: dateStr, Layout: "supported formats: 2006-01-02, 2006-01-02T15:04:05Z, 02.01.2006"}
+}
 
 // PatientCreateRequest структура запроса для создания пациента
 type PatientCreateRequest struct {
@@ -13,7 +43,7 @@ type PatientCreateRequest struct {
 	IIN                 string    `json:"iin" binding:"required,len=12"`
 	Name                string    `json:"name" binding:"required"`
 	Surname             string    `json:"surname" binding:"required"`
-	DateOfBirth         time.Time `json:"date_of_birth" binding:"required"`
+	DateOfBirth         Date      `json:"date_of_birth" binding:"required"`
 	Gender              string    `json:"gender" binding:"required"`
 	Email               string    `json:"email" binding:"required,email"`
 	Phone               string    `json:"phone" binding:"required"`
@@ -59,7 +89,7 @@ func (r *PatientCreateRequest) ToPatient() *Patient {
 		IIN:                 r.IIN,
 		Name:                r.Name,
 		Surname:             r.Surname,
-		DateOfBirth:         r.DateOfBirth,
+		DateOfBirth:         r.DateOfBirth.Time,
 		Gender:              r.Gender,
 		Email:               r.Email,
 		Phone:               r.Phone,
