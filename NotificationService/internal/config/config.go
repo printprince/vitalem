@@ -93,7 +93,9 @@ func (d *DatabaseConfig) PostgresDSN() string {
 func overrideFromEnv(cfg *Config) {
 	// Server config
 	if port := os.Getenv("SERVER_PORT"); port != "" {
-		cfg.Server.Port = port
+		if p, err := strconv.Atoi(port); err == nil {
+			cfg.Server.Port = p
+		}
 	}
 
 	// Logger config
