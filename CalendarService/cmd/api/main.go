@@ -16,7 +16,8 @@ import (
 	"CalendarService/internal/domain/repository"
 	"CalendarService/internal/infrastructure/notification"
 	"CalendarService/internal/service"
-	"CalendarService/pkg/logger"
+
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -30,7 +31,13 @@ func main() {
 	}
 
 	// Инициализируем логгер
-	logg := logger.NewLogger(cfg.Logger.Level)
+	logg := logger.NewClient(
+		cfg.Logger.ServiceURL,
+		cfg.Logger.ServiceName,
+		"",
+		logger.WithAsync(3),
+		logger.WithTimeout(3*time.Second),
+	)
 
 	// Создаем DSN для подключения к PostgreSQL
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
@@ -40,20 +47,24 @@ func main() {
 	// Подключаемся к базе данных через GORM
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		logg.Errorf("failed to connect to database: %v", err)
+		logg.Error("Failed to connect to database", map[string]interface{}{
+			"error": err.Error(),
+		})
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 
-	logg.Info("Successfully connected to database")
+	logg.Info("Successfully connected to database", nil)
 
 	// Выполняем автомиграции для создания таблиц
 	err = db.AutoMigrate(&models.Event{}, &models.Doctor{})
 	if err != nil {
-		logg.Errorf("failed to run migrations: %v", err)
+		logg.Error("Failed to run migrations", map[string]interface{}{
+			"error": err.Error(),
+		})
 		log.Fatalf("failed to run migrations: %v", err)
 	}
 
-	logg.Info("Database migrations completed successfully")
+	logg.Info("Database migrations completed successfully", nil)
 
 	// Создаем репозитории с GORM
 	eventRepo := repository.NewGormEventRepository(db)
@@ -71,7 +82,10 @@ func main() {
 	// Запускаем сервер в отдельной горутине
 	serverErrCh := make(chan error)
 	go func() {
-		logg.Infof("Starting api at %s:%d", cfg.Server.Host, cfg.Server.Port)
+		logg.Info("Starting API", map[string]interface{}{
+			"host": cfg.Server.Host,
+			"port": cfg.Server.Port,
+		})
 		if err := r.Start(cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)); err != nil {
 			serverErrCh <- err
 		}
@@ -83,9 +97,13 @@ func main() {
 
 	select {
 	case sig := <-quit:
-		logg.Infof("Shutdown signal received: %v", sig)
+		logg.Info("Shutdown signal received", map[string]interface{}{
+			"signal": sig.String(),
+		})
 	case err := <-serverErrCh:
-		logg.Errorf("Server error: %v", err)
+		logg.Error("Server error", map[string]interface{}{
+			"error": err.Error(),
+		})
 	}
 
 	// Создаем контекст с таймаутом для graceful shutdown
@@ -93,8 +111,10 @@ func main() {
 	defer cancel()
 
 	if err := r.Shutdown(ctxShutDown); err != nil {
-		logg.Errorf("Server shutdown error: %v", err)
+		logg.Error("Server shutdown error", map[string]interface{}{
+			"error": err.Error(),
+		})
 	} else {
-		logg.Info("Server shutdown completed")
+		logg.Info("Server shutdown completed", nil)
 	}
 }

@@ -1,4 +1,5 @@
 server:
+  host: 0.0.0.0
   port: 8805
 
 database:
@@ -14,6 +15,8 @@ notification:
 
 logger:
   level: "info"     # "debug", "info", "warn", "error"
+  service_url: "http://logger_service:8802"
+  service_name: "calendar_service"
 
 jwt:
   secret: "4324pkh23sk4jh342alhdlfl2sdjf"

@@ -1,4 +1,5 @@
 server:
+  host: 0.0.0.0
   port: 8806
   read_timeout: 10s
   write_timeout: 10s
@@ -15,7 +16,9 @@ rabbitmq:
   url: "amqp://guest:guest@rabbitmq:5672/"
 
 logger:
-  level: "info"
+  level: "info"     # "debug", "info", "warn", "error"
+  service_url: "http://logger_service:8802"
+  service_name: "notification_service"
 
 jwt:
   secret: "4324pkh23sk4jh342alhdlfl2sdjf"

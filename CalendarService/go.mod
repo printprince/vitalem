@@ -6,11 +6,12 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/labstack/echo/v4 v4.13.4
+	github.com/printprince/vitalem/logger_service v0.0.0
 	github.com/printprince/vitalem/utils v0.0.0
 	go.uber.org/zap v1.27.0
-	gopkg.in/yaml.v3 v3.0.1
+	gopkg.in/yaml.v2 v2.4.0
 	gorm.io/driver/postgres v1.6.0
-	gorm.io/gorm v1.25.12
+	gorm.io/gorm v1.26.1
 )
 
 require (
@@ -41,3 +42,5 @@ require (
 )
 
 replace github.com/printprince/vitalem/utils => ../utils
+
+replace github.com/printprince/vitalem/logger_service => ../logger_service

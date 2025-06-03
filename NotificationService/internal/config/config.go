@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"time"
 
 	"io/ioutil"
 
@@ -24,9 +23,8 @@ type Config struct {
 
 // ServerConfig конфигурация HTTP сервера
 type ServerConfig struct {
-	Port         string        `yaml:"port"`
-	ReadTimeout  time.Duration `yaml:"read_timeout"`
-	WriteTimeout time.Duration `yaml:"write_timeout"`
+	Host string `yaml:"host"`
+	Port int    `yaml:"port"`
 }
 
 // TelegramConfig — настройки для Telegram Bot API
@@ -47,7 +45,9 @@ type DatabaseConfig struct {
 
 // LoggerConfig уровень логирования
 type LoggerConfig struct {
-	Level string `yaml:"level"` // debug, info, warn, error
+	Level       string `yaml:"level"`
+	ServiceURL  string `yaml:"service_url"`
+	ServiceName string `yaml:"service_name"`
 }
 
 // AuthConfig конфиг для JWT и т.п.

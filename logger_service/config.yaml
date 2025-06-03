@@ -5,3 +5,10 @@ server:
 jwt:
   jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
   jwt_expire: 24
+
+logging:
+  level: info
+  elasticsearch_url: http://elasticsearch:9200
+  elasticsearch_index: vitalem-logs
+  elasticsearch_username: elastic
+  elasticsearch_password: changeme
