@@ -40,7 +40,7 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 // PatientCreateRequest структура запроса для создания пациента
 type PatientCreateRequest struct {
 	UserID              uuid.UUID `json:"user_id" binding:"required"`
-	IIN                 string    `json:"iin"`
+	IIN                 *string   `json:"iin"`
 	Name                string    `json:"name"`
 	Surname             string    `json:"surname"`
 	DateOfBirth         Date      `json:"date_of_birth"`
@@ -62,7 +62,7 @@ type PatientCreateRequest struct {
 type PatientResponse struct {
 	ID                  uuid.UUID `json:"id"`
 	UserID              uuid.UUID `json:"user_id"`
-	IIN                 string    `json:"iin"`
+	IIN                 *string   `json:"iin"`
 	Name                string    `json:"name"`
 	Surname             string    `json:"surname"`
 	DateOfBirth         time.Time `json:"date_of_birth"`

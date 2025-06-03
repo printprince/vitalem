@@ -27,7 +27,7 @@ type Patient struct {
 	ID                  uuid.UUID      `gorm:"type:uuid;primary_key"`
 	UserID              uuid.UUID      `gorm:"type:uuid;index"` // Связь с юзером из identity_service
 	Name                string         `gorm:"type:varchar(100)"`
-	IIN                 string         `gorm:"type:varchar(12);uniqueIndex:idx_patients_iin,where:iin IS NOT NULL"` // ИИН должен быть уникальным, но может быть NULL
+	IIN                 *string        `gorm:"type:varchar(12);uniqueIndex:idx_patients_iin,where:iin IS NOT NULL"` // ИИН должен быть уникальным, но может быть NULL
 	Surname             string         `gorm:"type:varchar(100)"`
 	DateOfBirth         time.Time      `gorm:"type:date"`
 	Gender              string         `gorm:"type:varchar(20)"`

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -51,10 +50,6 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		return err
 	}
 
-	// Генерируем уникальный временный IIN для избежания конфликтов
-	// Формат: TEMP + timestamp(8 цифр) - всего 12 символов
-	tempIIN := fmt.Sprintf("TEMP%08d", time.Now().Unix()%100000000)
-
 	// Создаем предварительный профиль пациента с временными данными
 	// Пользователь заполнит полный профиль через API позже
 	patient := &models.PatientCreateRequest{
@@ -65,7 +60,7 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		Gender:              "Не указан",
 		Email:               event.Email,
 		Phone:               "Не указан",
-		IIN:                 tempIIN, // Временный уникальный IIN, который пользователь должен будет заменить позже
+		IIN:                 nil, // NULL IIN для временного профиля, пользователь заполнит позже
 		Height:              0,
 		Weight:              0,
 		PhysActivity:        models.ActivityInactive,
@@ -92,7 +87,6 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		"userID":    event.UserID,
 		"email":     event.Email,
 		"patientID": response.ID,
-		"tempIIN":   tempIIN,
 	})
 
 	return nil
