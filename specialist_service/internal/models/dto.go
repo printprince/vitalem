@@ -9,13 +9,13 @@ import (
 // DoctorCreateRequest структура запроса для создания врача
 type DoctorCreateRequest struct {
 	UserID      uuid.UUID `json:"user_id" binding:"required"`
-	FirstName   string    `json:"first_name" binding:"required"`
+	FirstName   string    `json:"first_name"`
 	MiddleName  string    `json:"middle_name"`
-	LastName    string    `json:"last_name" binding:"required"`
+	LastName    string    `json:"last_name"`
 	Description string    `json:"description"`
 	Email       string    `json:"email" binding:"required,email"`
-	Phone       string    `json:"phone" binding:"required"`
-	Roles       []string  `json:"roles" binding:"required"`
+	Phone       string    `json:"phone"`
+	Roles       []string  `json:"roles"`
 }
 
 // DoctorResponse структура ответа с данными врача
