@@ -41,7 +41,7 @@ func NewConsumer(rabbitMQURL string, notificationSvc service.NotificationService
 	// Declare exchange
 	err = channel.ExchangeDeclare(
 		"vitalem", // name
-		"direct",  // type
+		"topic",   // type
 		true,      // durable
 		false,     // auto-deleted
 		false,     // internal
