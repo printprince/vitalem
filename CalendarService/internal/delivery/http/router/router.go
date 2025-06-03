@@ -34,21 +34,27 @@ func NewRouter(svc *service.CalendarService, log *logger.Logger) *Router {
 		jwtSecret = "4324pkh23sk4jh342alhdlfl2sdjf" // fallback
 	}
 
-	// Группируем API роуты
+	// Группируем API роуты с JWT проверкой
 	api := e.Group("/calendar")
 	api.Use(utilsMiddleware.JWTMiddleware(jwtSecret))
-	// Маршруты событий
-	api.POST("/", h.CreateEvent)             // Создать событие
-	api.GET("/:id", h.GetEventByID)          // Получить событие по ID
-	api.GET("/", h.GetEvents)                // Список событий (можно с фильтрами)
-	api.POST("/:id/book", h.BookEvent)       // Забронировать событие
-	api.POST("/:id/cancel", h.CancelBooking) // Отменить бронь
-	api.POST("/slots", h.CreateSlots)        // Создать слоты вручную
-	api.POST("/schedule", h.CreateSchedule)  // 🆕 Создать график автоматически
 
-	// 🆕 Удобные эндпоинты для пациентов
-	api.GET("/specialists/:specialist_id/slots", h.GetAvailableSlots) // Слоты врача
-	api.GET("/specialists/:specialist_id/info", h.GetDoctorInfo)      // Информация о враче + статистика
+	// Эндпоинты только для врачей
+	doctorRoutes := api.Group("")
+	doctorRoutes.Use(utilsMiddleware.RequireDoctor())
+	doctorRoutes.POST("/", h.CreateEvent)            // Создать событие - только врачи
+	doctorRoutes.POST("/slots", h.CreateSlots)       // Создать слоты вручную - только врачи
+	doctorRoutes.POST("/schedule", h.CreateSchedule) // Создать график автоматически - только врачи
+
+	// Эндпоинты для врачей и пациентов
+	commonRoutes := api.Group("")
+	commonRoutes.Use(utilsMiddleware.RequireDoctorOrPatient())
+	commonRoutes.GET("/:id", h.GetEventByID)          // Получить событие по ID
+	commonRoutes.GET("/", h.GetEvents)                // Список событий (можно с фильтрами)
+	commonRoutes.POST("/:id/book", h.BookEvent)       // Забронировать событие
+	commonRoutes.POST("/:id/cancel", h.CancelBooking) // Отменить бронь
+
+	// Удобные эндпоинты для пациентов (доступны всем авторизованным)
+	commonRoutes.GET("/specialists/:specialist_id/slots", h.GetAvailableSlots) // Слоты врача
 
 	return &Router{
 		echo:    e,

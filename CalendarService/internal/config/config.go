@@ -33,7 +33,7 @@ type LoggerConfig struct {
 }
 
 type Config struct {
-	Server       ServerConfig       `yaml:"api"`
+	Server       ServerConfig       `yaml:"server"`
 	Database     DatabaseConfig     `yaml:"database"`
 	Notification NotificationConfig `yaml:"notification"`
 	Logger       LoggerConfig       `yaml:"logger"`
