@@ -11,8 +11,7 @@ import (
 	"NotificationService/internal/infrastructure/codegen"
 	"NotificationService/internal/infrastructure/email"
 	"NotificationService/internal/infrastructure/telegram"
-
-	"github.com/printprince/vitalem/logger_service/pkg/logger"
+	"NotificationService/pkg/logger"
 
 	"github.com/google/uuid"
 )
@@ -29,7 +28,7 @@ type notificationService struct {
 	email      email.Sender
 	telegram   telegram.Sender
 	codegen    codegen.Generator
-	log        *logger.Client
+	log        *logger.Logger
 	identity   *IdentityNotificationService
 	patient    *PatientNotificationService
 	specialist *SpecialistNotificationService
@@ -42,7 +41,7 @@ func NewNotificationService(
 	emailSender email.Sender,
 	telegramSender telegram.Sender,
 	codeGenerator codegen.Generator,
-	log *logger.Client,
+	log *logger.Logger,
 ) NotificationService {
 	return &notificationService{
 		repo:       repo,
@@ -70,9 +69,7 @@ func (s *notificationService) Send(ctx context.Context, notification *models.Not
 	// Сохраняем в БД
 	err := s.repo.Create(ctx, notification)
 	if err != nil {
-		s.log.Error("Failed to create notification", map[string]interface{}{
-			"error": err.Error(),
-		})
+		s.log.Error("failed to create notification", "error", err)
 		return err
 	}
 
@@ -90,9 +87,7 @@ func (s *notificationService) Send(ctx context.Context, notification *models.Not
 
 	// Обработка результата отправки
 	if sendErr != nil {
-		s.log.Error("Failed to send notification", map[string]interface{}{
-			"error": sendErr.Error(),
-		})
+		s.log.Error("failed to send notification", "error", sendErr)
 		notification.Status = models.StatusFailed
 		lastErr := sendErr.Error()
 		notification.LastError = &lastErr
@@ -105,9 +100,7 @@ func (s *notificationService) Send(ctx context.Context, notification *models.Not
 
 	// Обновляем статус в БД
 	if err := s.repo.UpdateStatus(ctx, notification); err != nil {
-		s.log.Error("Failed to update notification status", map[string]interface{}{
-			"error": err.Error(),
-		})
+		s.log.Error("failed to update notification status", "error", err)
 		return err
 	}
 
@@ -129,9 +122,8 @@ func (s *notificationService) enrichMessage(notification *models.Notification) {
 	case strings.HasPrefix(typ, "file."):
 		s.fileserver.Enrich(notification)
 	default:
-		s.log.Error("Unknown notification type; message left empty", map[string]interface{}{
-			"type": typ,
-		})
+		s.log.Sugar().Warnw("unknown notification type; message left empty", "type", typ)
+
 	}
 }
 

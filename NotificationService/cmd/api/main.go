@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"syscall"
 	"time"
+
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 
 	"NotificationService/internal/config"
 	"NotificationService/internal/delivery/http/router"
@@ -16,115 +19,95 @@ import (
 	"NotificationService/internal/domain/repository"
 	"NotificationService/internal/infrastructure/codegen"
 	"NotificationService/internal/infrastructure/email"
+	"NotificationService/internal/infrastructure/messaging"
 	"NotificationService/internal/infrastructure/telegram"
 	"NotificationService/internal/service"
-
-	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
-	"github.com/printprince/vitalem/logger_service/pkg/logger"
+	"NotificationService/pkg/logger"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
 func main() {
-	// Загружаем конфиг
+	// 1. Загрузка конфигурации
 	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
-	// Инициализируем логгер
-	logg := logger.NewClient(
-		cfg.Logger.ServiceURL,
-		cfg.Logger.ServiceName,
-		"",
-		logger.WithAsync(3),
-		logger.WithTimeout(3*time.Second),
-	)
+	// 2. Инициализация логгера
+	logg := logger.NewLogger(cfg.Logger.Level)
+	defer logg.Sync()
 
-	// Создаем DSN для подключения к PostgreSQL
+	// 3. Подключение к базе данных через GORM
 	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=%s",
 		cfg.Database.Host, cfg.Database.User, cfg.Database.Password,
 		cfg.Database.DBName, cfg.Database.Port, cfg.Database.SSLMode)
 
-	// Подключаемся к базе данных через GORM
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		logg.Error("Failed to connect to database", map[string]interface{}{
-			"error": err.Error(),
-		})
-		log.Fatalf("failed to connect to database: %v", err)
+		logg.Fatal("failed to connect to database", "error", err)
 	}
 
-	logg.Info("Successfully connected to database", nil)
+	logg.Info("Successfully connected to database")
 
-	// Выполняем автомиграции для создания таблиц
+	// 4. Выполняем автомиграции
 	err = db.AutoMigrate(&models.Notification{})
 	if err != nil {
-		logg.Error("Failed to run migrations", map[string]interface{}{
-			"error": err.Error(),
-		})
-		log.Fatalf("failed to run migrations: %v", err)
+		logg.Fatal("failed to run migrations", "error", err)
 	}
 
-	logg.Info("Database migrations completed successfully", nil)
+	logg.Info("Database migrations completed successfully")
 
-	// Создаем репозитории с GORM
-	notifRepo := repository.NewGormNotificationRepository(db)
-
-	// Инициализируем инфраструктурные сервисы
+	// 5. Инициализация инфраструктуры отправки
 	emailSender := email.NewSMTPEmailSender(&cfg.SMTP)
 	telegramSender := telegram.NewTelegramSender(&cfg.Telegram)
 	codeGenerator := codegen.NewCodeGenerator()
 
-	// Создаем сервис уведомлений
+	// 6. Инициализация репозитория и сервиса с GORM
+	notifRepo := repository.NewGormNotificationRepository(db)
 	notifService := service.NewNotificationService(notifRepo, emailSender, telegramSender, codeGenerator, logg)
 
-	// Создаем Echo и настраиваем middleware
+	// 7. Инициализация Echo и роутера
 	e := echo.New()
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
 
-	// Настраиваем маршруты
 	router.SetupRoutes(e, notifService)
 
-	// Запускаем сервер в отдельной горутине
-	serverErrCh := make(chan error)
+	// Initialize and start RabbitMQ consumer
+	consumer, err := messaging.NewConsumer(cfg.RabbitMQ.URL, notifService, logg)
+	if err != nil {
+		logg.Fatal("Failed to create RabbitMQ consumer", "error", err)
+	}
+	defer consumer.Close()
+
+	ctx := context.Background()
+	if err := consumer.StartConsumer(ctx); err != nil {
+		logg.Fatal("Failed to start RabbitMQ consumer", "error", err)
+	}
+
+	// 8. Запуск HTTP сервера с graceful shutdown
+	serverAddr := ":" + cfg.Server.Port
 	go func() {
-		logg.Info("Starting API", map[string]interface{}{
-			"host": cfg.Server.Host,
-			"port": cfg.Server.Port,
-		})
-		if err := e.Start(cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)); err != nil {
-			serverErrCh <- err
+		logg.Info("starting api", "address", serverAddr)
+		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
+			logg.Fatal("shutting down api due to error", "error", err)
 		}
 	}()
 
-	// Ожидаем сигналы прерывания для корректного завершения
 	quit := make(chan os.Signal, 1)
-	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	<-quit
 
-	select {
-	case sig := <-quit:
-		logg.Info("Shutdown signal received", map[string]interface{}{
-			"signal": sig.String(),
-		})
-	case err := <-serverErrCh:
-		logg.Error("Server error", map[string]interface{}{
-			"error": err.Error(),
-		})
-	}
+	logg.Info("shutting down api...")
 
-	// Создаем контекст с таймаутом для graceful shutdown
-	ctxShutDown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctxShutdown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := e.Shutdown(ctxShutDown); err != nil {
-		logg.Error("Server shutdown error", map[string]interface{}{
-			"error": err.Error(),
-		})
+	if err := e.Shutdown(ctxShutdown); err != nil {
+		logg.Error("api shutdown failed", "error", err)
 	} else {
-		logg.Info("Server shutdown completed", nil)
+		logg.Info("api stopped gracefully")
 	}
 }

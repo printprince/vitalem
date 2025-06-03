@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 
 	"io/ioutil"
 
@@ -23,8 +24,9 @@ type Config struct {
 
 // ServerConfig конфигурация HTTP сервера
 type ServerConfig struct {
-	Host string `yaml:"host"`
-	Port int    `yaml:"port"`
+	Port         string        `yaml:"port"`
+	ReadTimeout  time.Duration `yaml:"read_timeout"`
+	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
 // TelegramConfig — настройки для Telegram Bot API
@@ -45,9 +47,7 @@ type DatabaseConfig struct {
 
 // LoggerConfig уровень логирования
 type LoggerConfig struct {
-	Level       string `yaml:"level"`
-	ServiceURL  string `yaml:"service_url"`
-	ServiceName string `yaml:"service_name"`
+	Level string `yaml:"level"` // debug, info, warn, error
 }
 
 // AuthConfig конфиг для JWT и т.п.
@@ -93,9 +93,7 @@ func (d *DatabaseConfig) PostgresDSN() string {
 func overrideFromEnv(cfg *Config) {
 	// Server config
 	if port := os.Getenv("SERVER_PORT"); port != "" {
-		if p, err := strconv.Atoi(port); err == nil {
-			cfg.Server.Port = p
-		}
+		cfg.Server.Port = port
 	}
 
 	// Logger config

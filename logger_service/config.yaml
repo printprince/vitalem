@@ -9,6 +9,3 @@ jwt:
 logging:
   level: info
   elasticsearch_url: http://elasticsearch:9200
-  elasticsearch_index: vitalem-logs
-  elasticsearch_username: elastic
-  elasticsearch_password: changeme

@@ -2,9 +2,8 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Копируем все необходимые модули
+# Создаем структуру директорий для правильной работы с replace директивами
 COPY ./utils ./utils
-COPY ./logger_service ./logger_service
 COPY ./NotificationService ./NotificationService
 
 # Переходим в директорию сервиса для сборки
