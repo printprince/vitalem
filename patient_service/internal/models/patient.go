@@ -12,11 +12,11 @@ import (
 // В будущем можно вынести в отдельную таблицу,
 // но пока хватит и этого - упростит работу фронта
 const (
-	ActivityInactive      = "Неактивный"            // < 5k шагов в день, базовое потребление
-	ActivityLowActive     = "Малоактивный"          // 5-7.5k шагов, минимальная нагрузка
-	ActivityActive        = "Активный"              // 7.5-10k шагов, регулярные тренировки
-	ActivityVeryActive    = "Очень активный"        // 10-12.5k шагов, интенсивные тренировки
-	ActivityExtremeActive = "Экстремально активный" // >12.5k шагов, профессиональный спорт
+	ActivityInactive      = "Неактивный"
+	ActivityLowActive     = "Малоактивный"
+	ActivityActive        = "Активный"
+	ActivityVeryActive    = "Очень активный"
+	ActivityExtremeActive = "Экстремально активный"
 )
 
 // Patient - основная модель пациента для хранения в БД
@@ -27,7 +27,7 @@ type Patient struct {
 	ID                  uuid.UUID      `gorm:"type:uuid;primary_key"`
 	UserID              uuid.UUID      `gorm:"type:uuid;index"` // Связь с юзером из identity_service
 	Name                string         `gorm:"type:varchar(100)"`
-	IIN                 string         `gorm:"type:varchar(12); uniqueIndex"` // ИИН должен быть уникальным
+	IIN                 string         `gorm:"type:varchar(12);uniqueIndex:idx_patients_iin,where:iin IS NOT NULL"` // ИИН должен быть уникальным, но может быть NULL
 	Surname             string         `gorm:"type:varchar(100)"`
 	DateOfBirth         time.Time      `gorm:"type:date"`
 	Gender              string         `gorm:"type:varchar(20)"`
