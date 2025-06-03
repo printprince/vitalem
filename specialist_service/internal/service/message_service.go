@@ -106,11 +106,11 @@ func NewMessageService(
 
 	// Привязываем очередь к exchange
 	err = channel.QueueBind(
-		userQueueName,  // имя очереди
-		"user.created", // ключ маршрутизации
-		exchange,       // имя exchange
-		false,          // no-wait
-		nil,            // аргументы
+		userQueueName, // имя очереди
+		routingKey,    // ключ маршрутизации из конфигурации
+		exchange,      // имя exchange
+		false,         // no-wait
+		nil,           // аргументы
 	)
 	if err != nil {
 		channel.Close()
