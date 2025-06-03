@@ -118,6 +118,7 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 	// Жёсткий перезапись всех полей без проверки на nil
 	// TODO: Добавить частичное обновление с проверкой заполненности полей
 	patient.Name = req.Name
+	patient.IIN = req.IIN
 	patient.Surname = req.Surname
 	patient.DateOfBirth = req.DateOfBirth.Time
 	patient.Gender = req.Gender
@@ -213,7 +214,7 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 	if req.PhysActivity != "" {
 		patient.PhysActivity = req.PhysActivity
 	}
-	if req.IIN != "" {
+	if req.IIN != nil && *req.IIN != "" {
 		patient.IIN = req.IIN
 	}
 	if len(req.Diagnoses) > 0 {
