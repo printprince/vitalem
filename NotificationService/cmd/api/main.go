@@ -11,11 +11,16 @@ import (
 	"time"
 
 	"NotificationService/internal/config"
-	"NotificationService/internal/delivery/http/router"
+	"NotificationService/internal/delivery/http/handler"
 	"NotificationService/internal/domain/models"
 	"NotificationService/internal/domain/repository"
+	"NotificationService/internal/infrastructure/codegen"
+	"NotificationService/internal/infrastructure/email"
+	"NotificationService/internal/infrastructure/telegram"
 	"NotificationService/internal/service"
 
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
 
 	"gorm.io/driver/postgres"
@@ -68,11 +73,21 @@ func main() {
 	// Создаем репозитории с GORM
 	notifRepo := repository.NewGormNotificationRepository(db)
 
-	// Создаем сервис уведомлений с репозиторием
-	notifService := service.NewNotificationService(notifRepo, logg)
+	// Инициализируем инфраструктурные сервисы
+	emailSender := email.NewSMTPEmailSender(&cfg.SMTP)
+	telegramSender := telegram.NewTelegramSender(&cfg.Telegram)
+	codeGenerator := codegen.NewCodeGenerator()
 
-	// Создаем роутер и передаем зависимости
-	r := router.NewRouter(notifService, logg)
+	// Создаем сервис уведомлений
+	notifService := service.NewNotificationService(notifRepo, emailSender, telegramSender, codeGenerator, logg)
+
+	// Создаем Echo и настраиваем middleware
+	e := echo.New()
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+
+	// Настраиваем маршруты
+	handler.SetupRoutes(e, notifService)
 
 	// Запускаем сервер в отдельной горутине
 	serverErrCh := make(chan error)
@@ -81,7 +96,7 @@ func main() {
 			"host": cfg.Server.Host,
 			"port": cfg.Server.Port,
 		})
-		if err := r.Start(cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)); err != nil {
+		if err := e.Start(cfg.Server.Host + ":" + strconv.Itoa(cfg.Server.Port)); err != nil {
 			serverErrCh <- err
 		}
 	}()
@@ -105,7 +120,7 @@ func main() {
 	ctxShutDown, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := r.Shutdown(ctxShutDown); err != nil {
+	if err := e.Shutdown(ctxShutDown); err != nil {
 		logg.Error("Server shutdown error", map[string]interface{}{
 			"error": err.Error(),
 		})
