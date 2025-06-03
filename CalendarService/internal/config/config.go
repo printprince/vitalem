@@ -98,7 +98,7 @@ func LoadConfig(path string) (*Config, error) {
 }
 
 // PostgresDSN формирует строку подключения
-func (d *DatabaseConfig) PostgresDSN() string {
+func (c *Config) PostgresDSN() string {
 	return fmt.Sprintf("postgres://%s:%s@%s:%d/%s?sslmode=%s",
-		d.User, d.Password, d.Host, d.Port, d.DBName, d.SSLMode)
+		c.Database.User, c.Database.Password, c.Database.Host, c.Database.Port, c.Database.DBName, c.Database.SSLMode)
 }
