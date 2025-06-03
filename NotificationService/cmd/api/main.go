@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"NotificationService/internal/config"
-	"NotificationService/internal/delivery/http/handler"
+	"NotificationService/internal/delivery/http/router"
 	"NotificationService/internal/domain/models"
 	"NotificationService/internal/domain/repository"
 	"NotificationService/internal/infrastructure/codegen"
@@ -87,7 +87,7 @@ func main() {
 	e.Use(middleware.Recover())
 
 	// Настраиваем маршруты
-	handler.SetupRoutes(e, notifService)
+	router.SetupRoutes(e, notifService)
 
 	// Запускаем сервер в отдельной горутине
 	serverErrCh := make(chan error)
