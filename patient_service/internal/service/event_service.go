@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"github.com/printprince/vitalem/patient_service/internal/models"
 )
@@ -39,10 +40,20 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		return nil
 	}
 
+	// Преобразуем строковый ID в UUID
+	userID, err := uuid.Parse(event.UserID)
+	if err != nil {
+		s.logger.Error("Ошибка парсинга UserID", map[string]interface{}{
+			"error":  err.Error(),
+			"userID": event.UserID,
+		})
+		return err
+	}
+
 	// Создаем предварительный профиль пациента с временными данными
 	// Пользователь заполнит полный профиль через API позже
 	patient := &models.PatientCreateRequest{
-		UserID:              event.UserID,
+		UserID:              userID,
 		Name:                "Не указано",
 		Surname:             "Не указана",
 		DateOfBirth:         models.Date{Time: time.Now()},

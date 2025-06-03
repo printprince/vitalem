@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"github.com/printprince/vitalem/specialist_service/internal/models"
 )
@@ -38,10 +39,20 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		return nil
 	}
 
+	// Преобразуем строковый ID в UUID
+	userID, err := uuid.Parse(event.UserID)
+	if err != nil {
+		s.logger.Error("Ошибка парсинга UserID", map[string]interface{}{
+			"error":  err.Error(),
+			"userID": event.UserID,
+		})
+		return err
+	}
+
 	// Создаем предварительный профиль доктора с временными данными
 	// Пользователь заполнит полный профиль через API позже
 	doctor := &models.DoctorCreateRequest{
-		UserID:      event.UserID,
+		UserID:      userID,
 		FirstName:   "Не указано",
 		LastName:    "Не указана",
 		Email:       event.Email,

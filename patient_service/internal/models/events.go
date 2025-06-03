@@ -14,7 +14,7 @@ type PatientCreatedEvent struct {
 
 // UserCreatedEvent событие создания пользователя в identity_service
 type UserCreatedEvent struct {
-	UserID uuid.UUID `json:"user_id"`
-	Email  string    `json:"email"`
-	Role   string    `json:"role"`
+	UserID string `json:"user_id"`
+	Email  string `json:"email"`
+	Role   string `json:"role"`
 }
