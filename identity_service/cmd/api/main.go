@@ -109,6 +109,17 @@ func main() {
 	userRepository := repository.NewUserRepository(db)
 	authService := service.NewAuthService(userRepository, cfg.JWT.Secret, cfg.JWT.Expire)
 
+	// Устанавливаем логгер в authService
+	authService.SetLogger(appLogger)
+
+	logInfo("Проверяем настройки RabbitMQ", map[string]interface{}{
+		"rmq_host":        cfg.RabbitMQ.Host,
+		"rmq_port":        cfg.RabbitMQ.Port,
+		"rmq_exchange":    cfg.RabbitMQ.Exchange,
+		"rmq_user_queue":  cfg.RabbitMQ.UserQueue,
+		"rmq_routing_key": cfg.RabbitMQ.RoutingKey,
+	})
+
 	// Подключаем RabbitMQ если настроен
 	if cfg.RabbitMQ.Host != "" {
 		rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
@@ -117,6 +128,10 @@ func main() {
 			cfg.RabbitMQ.Host,
 			cfg.RabbitMQ.Port,
 		)
+
+		logInfo("Инициализируем RabbitMQ", map[string]interface{}{
+			"url": rabbitMQURL,
+		})
 
 		// Инициализируем сервис сообщений
 		messageService, err := service.NewMessageService(
