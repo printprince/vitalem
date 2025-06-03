@@ -22,7 +22,7 @@ rabbitmq:
   rmq_exchange: vitalem
   rmq_patient_queue: patient.events
   rmq_user_queue: user.events
-  rmq_routing_key: patient.created
+  rmq_routing_key: user.created
 
 jwt:
   jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
