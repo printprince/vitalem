@@ -29,6 +29,6 @@ jwt:
   jwt_expire: 24
 
 logging:
-  console_level: error   # Уровень логов для консоли
+  console_level: info   # Уровень логов для консоли
   service_level: info    # Уровень логов для logger_service
   service_url: http://logger_service:8802

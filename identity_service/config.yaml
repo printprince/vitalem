@@ -24,6 +24,6 @@ rabbitmq:
   rmq_routing_key: user.created
 
 logging:
-  console_level: error  # Только ошибки будут выводиться в консоль
+  console_level: info  # Только ошибки будут выводиться в консоль
   service_level: info   # Все информационные сообщения будут отправляться в logger_service
   service_url: http://logger_service:8802
