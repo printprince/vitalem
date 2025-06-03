@@ -16,19 +16,18 @@ type MessageService interface {
 }
 
 type messageService struct {
-	conn             *amqp.Connection
-	channel          *amqp.Channel
-	exchange         string
-	patientQueueName string
-	userQueueName    string
-	routingKey       string
-	logger           *logger.Client
+	conn          *amqp.Connection
+	channel       *amqp.Channel
+	exchange      string
+	userQueueName string
+	routingKey    string
+	logger        *logger.Client
 }
 
 func NewMessageService(
 	rabbitMQURL string,
 	exchange string,
-	patientQueueName string,
+	patientQueueName string, // Оставляем для совместимости, но не используем
 	userQueueName string,
 	routingKey string,
 	logger *logger.Client,
@@ -60,36 +59,7 @@ func NewMessageService(
 		return nil, err
 	}
 
-	// Объявляем очередь для пациентов
-	_, err = channel.QueueDeclare(
-		patientQueueName, // имя
-		true,             // durable
-		false,            // delete when unused
-		false,            // exclusive
-		false,            // no-wait
-		nil,              // аргументы
-	)
-	if err != nil {
-		channel.Close()
-		conn.Close()
-		return nil, err
-	}
-
-	// Привязываем очередь к exchange
-	err = channel.QueueBind(
-		patientQueueName, // имя очереди
-		routingKey,       // ключ маршрутизации
-		exchange,         // имя exchange
-		false,            // no-wait
-		nil,              // аргументы
-	)
-	if err != nil {
-		channel.Close()
-		conn.Close()
-		return nil, err
-	}
-
-	// Объявляем очередь для пользователей
+	// Объявляем только очередь для получения событий пользователей
 	_, err = channel.QueueDeclare(
 		userQueueName, // имя
 		true,          // durable
@@ -119,13 +89,12 @@ func NewMessageService(
 	}
 
 	return &messageService{
-		conn:             conn,
-		channel:          channel,
-		exchange:         exchange,
-		patientQueueName: patientQueueName,
-		userQueueName:    userQueueName,
-		routingKey:       routingKey,
-		logger:           logger,
+		conn:          conn,
+		channel:       channel,
+		exchange:      exchange,
+		userQueueName: userQueueName,
+		routingKey:    routingKey,
+		logger:        logger,
 	}, nil
 }
 
@@ -139,9 +108,10 @@ func (s *messageService) PublishPatientCreated(ctx context.Context, event *model
 		return err
 	}
 
+	// Публикуем события о создании пациента с отдельным routing key
 	err = s.channel.Publish(
 		s.exchange,
-		s.routingKey,
+		"patient.created", // используем специальный routing key для событий пациентов
 		false,
 		false,
 		amqp.Publishing{
@@ -179,6 +149,11 @@ func (s *messageService) ConsumeUserCreated(ctx context.Context) (<-chan models.
 		})
 		return nil, err
 	}
+
+	s.logger.Info("Started consuming user created events", map[string]interface{}{
+		"queue":      s.userQueueName,
+		"routingKey": s.routingKey,
+	})
 
 	events := make(chan models.UserCreatedEvent)
 
