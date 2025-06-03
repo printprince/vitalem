@@ -60,7 +60,7 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		Gender:              "Не указан",
 		Email:               event.Email,
 		Phone:               "Не указан",
-		IIN:                 "000000000000", // Временный IIN, который пользователь должен будет заменить
+		IIN:                 "", // Пустой IIN, который пользователь должен будет заполнить позже
 		Height:              0,
 		Weight:              0,
 		PhysActivity:        models.ActivityInactive,
