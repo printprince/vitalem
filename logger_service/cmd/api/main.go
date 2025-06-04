@@ -81,6 +81,11 @@ func main() {
 	e.Use(echomiddleware.Recover())
 	e.Use(middleware.CORSMiddleware())
 
+	// Добавляем эндпоинт проверки здоровья
+	e.GET("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
 	// Регистрируем маршруты
 	handlers.RegisterRoutes(e, logService, logger)
 

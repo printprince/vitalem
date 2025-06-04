@@ -155,6 +155,11 @@ func main() {
 	e.Use(echomiddleware.Recover())
 	e.Use(middleware.CORSMiddleware())
 
+	// Добавляем эндпоинт проверки здоровья
+	e.GET("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
 	// Регистрируем публичные маршруты
 	publicRoutes := e.Group("/public")
 	patientHandlers.RegisterPublicRoutes(publicRoutes)
