@@ -3,17 +3,18 @@ package main
 import (
 	"context"
 	"fmt"
-	"identity_service/internal/config"
-	"identity_service/internal/handlers"
-	"identity_service/internal/models"
-	"identity_service/internal/repository"
-	"identity_service/internal/service"
 	"log"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/printprince/vitalem/identity_service/internal/config"
+	"github.com/printprince/vitalem/identity_service/internal/handlers"
+	"github.com/printprince/vitalem/identity_service/internal/models"
+	"github.com/printprince/vitalem/identity_service/internal/repository"
+	"github.com/printprince/vitalem/identity_service/internal/service"
 
 	"github.com/labstack/echo/v4"
 	echomiddleware "github.com/labstack/echo/v4/middleware"

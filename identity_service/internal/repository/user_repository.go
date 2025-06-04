@@ -1,7 +1,7 @@
 package repository
 
 import (
-	"identity_service/internal/models"
+	"github.com/printprince/vitalem/identity_service/internal/models"
 
 	"gorm.io/gorm"
 )

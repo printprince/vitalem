@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"identity_service/internal/models"
-	"identity_service/internal/repository"
 	"time"
+
+	"github.com/printprince/vitalem/identity_service/internal/models"
+	"github.com/printprince/vitalem/identity_service/internal/repository"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"

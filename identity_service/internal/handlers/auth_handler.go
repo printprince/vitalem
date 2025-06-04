@@ -1,9 +1,10 @@
 package handlers
 
 import (
-	"identity_service/internal/service"
 	"net/http"
 	"strings"
+
+	"github.com/printprince/vitalem/identity_service/internal/service"
 
 	"github.com/labstack/echo/v4"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
