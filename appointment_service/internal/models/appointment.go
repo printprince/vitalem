@@ -1,6 +1,7 @@
 package models
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,10 @@ type Appointment struct {
 	Title           string `gorm:"type:varchar(255);not null" json:"title"`                     // "Консультация терапевта"
 	Status          string `gorm:"type:varchar(20);not null;default:'available'" json:"status"` // available, booked, completed, canceled
 	AppointmentType string `gorm:"type:varchar(10);default:'offline'" json:"appointment_type"`  // offline, online
+
+	// Ссылка на онлайн встречу (только для онлайн записей)
+	MeetingLink *string `gorm:"type:text" json:"meeting_link,omitempty"`
+	MeetingID   *string `gorm:"type:varchar(100)" json:"meeting_id,omitempty"`
 
 	// Заметки
 	PatientNotes string `gorm:"type:text" json:"patient_notes"` // Жалобы пациента
@@ -58,12 +63,24 @@ func (a *Appointment) Book(patientID uuid.UUID, appointmentType, notes string) {
 	if notes != "" {
 		a.PatientNotes = notes
 	}
+
+	// Если это онлайн запись, генерируем заглушку ссылки
+	if appointmentType == "online" {
+		meetingID := fmt.Sprintf("vitalem-%s", a.ID.String()[:8])
+		meetingLink := fmt.Sprintf("https://meet.vitalem.kz/room/%s", meetingID)
+		a.MeetingID = &meetingID
+		a.MeetingLink = &meetingLink
+	}
+
 	a.UpdatedAt = time.Now()
 }
 
 func (a *Appointment) Cancel() {
 	a.Status = "canceled"
 	a.PatientID = nil
+	// Очищаем ссылку на встречу при отмене
+	a.MeetingLink = nil
+	a.MeetingID = nil
 	a.UpdatedAt = time.Now()
 }
 

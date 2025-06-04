@@ -3,11 +3,11 @@ server:
   port: "8085"
 
 database:
-  host: "localhost"
+  host: "postgres"
   port: "5432"
   user: "postgres"
-  password: "password"
-  db_name: "vitalem_appointments"
+  password: "61324"
+  db_name: "vitalem_db"
   ssl_mode: "disable"
 
 logging:
@@ -15,9 +15,12 @@ logging:
   format: "json"
 
 app:
-  name: "appointment_service"
+  name: "appointment-service"
   version: "1.0.0"
   environment: "development"
 
 auth:
-  jwt_secret: "your-super-secret-jwt-key-for-development" 
+  jwt_secret: "4324pkh23sk4jh342alhdlfl2sdjf"
+
+meeting:
+  platform_url: https://meet.vitalem.kz 

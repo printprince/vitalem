@@ -87,6 +87,125 @@ func (h *AppointmentHandler) GetDoctorSchedules(c echo.Context) error {
 	})
 }
 
+// UpdateSchedule - PUT /api/doctor/schedules/:id
+func (h *AppointmentHandler) UpdateSchedule(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	scheduleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid schedule ID",
+		})
+	}
+
+	var req models.UpdateScheduleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	// Валидация входящих данных
+	if err := c.Validate(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	response, err := h.service.UpdateSchedule(userID, scheduleID, &req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    response,
+	})
+}
+
+// DeleteSchedule - DELETE /api/doctor/schedules/:id
+func (h *AppointmentHandler) DeleteSchedule(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	scheduleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid schedule ID",
+		})
+	}
+
+	if err := h.service.DeleteSchedule(userID, scheduleID); err != nil {
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    "Schedule deleted successfully",
+	})
+}
+
+// ToggleSchedule - PATCH /api/doctor/schedules/:id/toggle
+func (h *AppointmentHandler) ToggleSchedule(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	scheduleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid schedule ID",
+		})
+	}
+
+	var req models.ToggleScheduleRequest
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid request body",
+		})
+	}
+
+	response, err := h.service.ToggleSchedule(userID, scheduleID, &req)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    response,
+	})
+}
+
 // GenerateSlots - POST /api/doctor/schedules/:id/generate-slots
 func (h *AppointmentHandler) GenerateSlots(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)

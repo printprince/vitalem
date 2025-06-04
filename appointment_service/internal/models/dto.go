@@ -39,6 +39,24 @@ type ScheduleResponse struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+// UpdateScheduleRequest - обновление расписания врача
+type UpdateScheduleRequest struct {
+	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
+	WorkDays     *[]int  `json:"work_days,omitempty" validate:"omitempty,min=1,max=7,dive,min=1,max=7"`
+	StartTime    *string `json:"start_time,omitempty" validate:"omitempty,len=5"`
+	EndTime      *string `json:"end_time,omitempty" validate:"omitempty,len=5"`
+	BreakStart   *string `json:"break_start,omitempty" validate:"omitempty,len=5"`
+	BreakEnd     *string `json:"break_end,omitempty" validate:"omitempty,len=5"`
+	SlotDuration *int    `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
+	SlotTitle    *string `json:"slot_title,omitempty" validate:"omitempty,max=255"`
+	IsDefault    *bool   `json:"is_default,omitempty"`
+}
+
+// ToggleScheduleRequest - активация/деактивация расписания
+type ToggleScheduleRequest struct {
+	IsActive bool `json:"is_active"`
+}
+
 // GenerateSlotsRequest - генерация слотов
 type GenerateSlotsRequest struct {
 	StartDate string `json:"start_date" validate:"required,len=10"` // "2024-06-01"
@@ -66,6 +84,10 @@ type AppointmentResponse struct {
 	Status          string `json:"status"`
 	AppointmentType string `json:"appointment_type"`
 
+	// Онлайн встреча (только для онлайн записей)
+	MeetingLink *string `json:"meeting_link,omitempty"`
+	MeetingID   *string `json:"meeting_id,omitempty"`
+
 	PatientNotes string `json:"patient_notes"`
 	DoctorNotes  string `json:"doctor_notes"`
 
@@ -75,11 +97,12 @@ type AppointmentResponse struct {
 
 // AvailableSlot - доступный слот для пациента
 type AvailableSlot struct {
-	ID        uuid.UUID `json:"id"`
-	StartTime time.Time `json:"start_time"`
-	EndTime   time.Time `json:"end_time"`
-	Duration  int       `json:"duration_minutes"`
-	Title     string    `json:"title"`
+	ID              uuid.UUID `json:"id"`
+	StartTime       time.Time `json:"start_time"`
+	EndTime         time.Time `json:"end_time"`
+	Duration        int       `json:"duration_minutes"`
+	Title           string    `json:"title"`
+	AppointmentType string    `json:"appointment_type"` // offline, online
 }
 
 // === EXCEPTION DTOs ===

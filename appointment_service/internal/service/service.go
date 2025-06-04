@@ -16,6 +16,9 @@ type AppointmentService interface {
 	// Schedules
 	CreateSchedule(doctorID uuid.UUID, req *models.CreateScheduleRequest) (*models.ScheduleResponse, error)
 	GetDoctorSchedules(doctorID uuid.UUID) ([]*models.ScheduleResponse, error)
+	UpdateSchedule(doctorID, scheduleID uuid.UUID, req *models.UpdateScheduleRequest) (*models.ScheduleResponse, error)
+	DeleteSchedule(doctorID, scheduleID uuid.UUID) error
+	ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest) (*models.ScheduleResponse, error)
 	GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) error
 
 	// Appointments
@@ -236,11 +239,12 @@ func (s *appointmentService) GetAvailableSlots(doctorID uuid.UUID, date string) 
 	for i, appointment := range appointments {
 		duration := int(appointment.EndTime.Sub(appointment.StartTime).Minutes())
 		slots[i] = &models.AvailableSlot{
-			ID:        appointment.ID,
-			StartTime: appointment.StartTime,
-			EndTime:   appointment.EndTime,
-			Duration:  duration,
-			Title:     appointment.Title,
+			ID:              appointment.ID,
+			StartTime:       appointment.StartTime,
+			EndTime:         appointment.EndTime,
+			Duration:        duration,
+			Title:           appointment.Title,
+			AppointmentType: appointment.AppointmentType,
 		}
 	}
 
@@ -405,6 +409,8 @@ func (s *appointmentService) appointmentToResponse(appointment *models.Appointme
 		Title:           appointment.Title,
 		Status:          appointment.Status,
 		AppointmentType: appointment.AppointmentType,
+		MeetingLink:     appointment.MeetingLink,
+		MeetingID:       appointment.MeetingID,
 		PatientNotes:    appointment.PatientNotes,
 		DoctorNotes:     appointment.DoctorNotes,
 		CreatedAt:       appointment.CreatedAt,
@@ -423,4 +429,96 @@ func (s *appointmentService) exceptionToResponse(exception *models.ScheduleExcep
 		Reason:          exception.Reason,
 		CreatedAt:       exception.CreatedAt,
 	}
+}
+
+func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req *models.UpdateScheduleRequest) (*models.ScheduleResponse, error) {
+	schedule, err := s.repo.GetScheduleByID(scheduleID)
+	if err != nil {
+		return nil, fmt.Errorf("schedule not found: %w", err)
+	}
+
+	if schedule.DoctorID != doctorID {
+		return nil, errors.New("schedule doesn't belong to this doctor")
+	}
+
+	// Обновляем только переданные поля
+	if req.Name != nil {
+		schedule.Name = *req.Name
+	}
+	if req.WorkDays != nil {
+		schedule.WorkDays = *req.WorkDays
+	}
+	if req.StartTime != nil {
+		schedule.StartTime = *req.StartTime
+	}
+	if req.EndTime != nil {
+		schedule.EndTime = *req.EndTime
+	}
+	if req.BreakStart != nil {
+		schedule.BreakStart = req.BreakStart
+	}
+	if req.BreakEnd != nil {
+		schedule.BreakEnd = req.BreakEnd
+	}
+	if req.SlotDuration != nil {
+		schedule.SlotDuration = *req.SlotDuration
+	}
+	if req.SlotTitle != nil {
+		schedule.SlotTitle = *req.SlotTitle
+	}
+	if req.IsDefault != nil {
+		// Если устанавливаем как основное, деактивируем другие основные
+		if *req.IsDefault {
+			schedules, _ := s.repo.GetDoctorSchedules(doctorID)
+			for _, otherSchedule := range schedules {
+				if otherSchedule.IsDefault && otherSchedule.ID != scheduleID {
+					otherSchedule.IsDefault = false
+					s.repo.UpdateSchedule(otherSchedule)
+				}
+			}
+		}
+		schedule.IsDefault = *req.IsDefault
+	}
+
+	if err := s.repo.UpdateSchedule(schedule); err != nil {
+		return nil, fmt.Errorf("failed to update schedule: %w", err)
+	}
+
+	return s.scheduleToResponse(schedule), nil
+}
+
+func (s *appointmentService) DeleteSchedule(doctorID, scheduleID uuid.UUID) error {
+	schedule, err := s.repo.GetScheduleByID(scheduleID)
+	if err != nil {
+		return fmt.Errorf("schedule not found: %w", err)
+	}
+
+	if schedule.DoctorID != doctorID {
+		return errors.New("schedule doesn't belong to this doctor")
+	}
+
+	if err := s.repo.DeleteSchedule(scheduleID); err != nil {
+		return fmt.Errorf("failed to delete schedule: %w", err)
+	}
+
+	return nil
+}
+
+func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest) (*models.ScheduleResponse, error) {
+	schedule, err := s.repo.GetScheduleByID(scheduleID)
+	if err != nil {
+		return nil, fmt.Errorf("schedule not found: %w", err)
+	}
+
+	if schedule.DoctorID != doctorID {
+		return nil, errors.New("schedule doesn't belong to this doctor")
+	}
+
+	schedule.IsActive = req.IsActive
+
+	if err := s.repo.UpdateSchedule(schedule); err != nil {
+		return nil, fmt.Errorf("failed to toggle schedule: %w", err)
+	}
+
+	return s.scheduleToResponse(schedule), nil
 }

@@ -15,6 +15,7 @@ type Config struct {
 	Logging  LoggingConfig  `yaml:"logging" json:"logging"`
 	App      AppConfig      `yaml:"app" json:"app"`
 	Auth     AuthConfig     `yaml:"auth" json:"auth"`
+	Meeting  MeetingConfig  `yaml:"meeting" json:"meeting"`
 }
 
 // ServerConfig - конфигурация сервера
@@ -48,7 +49,12 @@ type AppConfig struct {
 
 // AuthConfig - конфигурация авторизации
 type AuthConfig struct {
-	JWTSecret string `yaml:"jwt_secret" json:"jwt_secret"`
+	JWTSecret string `yaml:"jwt_secret" env:"JWT_SECRET"`
+}
+
+// MeetingConfig - конфигурация онлайн встреч
+type MeetingConfig struct {
+	PlatformURL string `yaml:"platform_url" env:"MEETING_PLATFORM_URL" envDefault:"https://meet.vitalem.kz"`
 }
 
 // LoadConfig - загрузка конфигурации из YAML файла
@@ -146,5 +152,10 @@ func overrideFromEnv(config *Config) {
 	// Auth
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
 		config.Auth.JWTSecret = jwtSecret
+	}
+
+	// Meeting
+	if platformURL := os.Getenv("MEETING_PLATFORM_URL"); platformURL != "" {
+		config.Meeting.PlatformURL = platformURL
 	}
 }

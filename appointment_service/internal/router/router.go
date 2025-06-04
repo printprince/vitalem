@@ -31,9 +31,12 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 	doctor.Use(utilsMiddleware.RequireDoctor())
 	{
 		// Schedule management - только врачи могут управлять расписанием
-		doctor.POST("/schedules", handler.CreateSchedule)
-		doctor.GET("/schedules", handler.GetDoctorSchedules)
-		doctor.POST("/schedules/:id/generate-slots", handler.GenerateSlots)
+		doctor.POST("/schedules", handler.CreateSchedule)                   // Создать расписание
+		doctor.GET("/schedules", handler.GetDoctorSchedules)                // Получить все расписания
+		doctor.PUT("/schedules/:id", handler.UpdateSchedule)                // Обновить расписание
+		doctor.DELETE("/schedules/:id", handler.DeleteSchedule)             // Удалить расписание
+		doctor.PATCH("/schedules/:id/toggle", handler.ToggleSchedule)       // Активировать/деактивировать
+		doctor.POST("/schedules/:id/generate-slots", handler.GenerateSlots) // Генерация слотов
 
 		// Doctor's appointments - врач видит свои записи
 		doctor.GET("/appointments", handler.GetDoctorAppointments)
