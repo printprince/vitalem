@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// Настройка RabbitMQ URL
-	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%d/",
+	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
 		cfg.RabbitMQ.User,
 		cfg.RabbitMQ.Password,
 		cfg.RabbitMQ.Host,

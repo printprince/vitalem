@@ -82,7 +82,7 @@ func main() {
 	}
 
 	// Настройка RabbitMQ URL
-	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%d/",
+	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
 		cfg.RabbitMQ.User,
 		cfg.RabbitMQ.Password,
 		cfg.RabbitMQ.Host,
@@ -167,6 +167,16 @@ func main() {
 
 	// Защищенные маршруты (требуют JWT аутентификации)
 	protectedGroup := e.Group("/api/v1")
+
+	// Debug: выводим информацию о JWT секрете
+	if loggerClient != nil {
+		loggerClient.Info("JWT configuration loaded", map[string]interface{}{
+			"jwt_secret_length":  len(cfg.JWT.Secret),
+			"jwt_secret_preview": cfg.JWT.Secret[:8] + "...",
+			"jwt_expire":         cfg.JWT.Expire,
+		})
+	}
+
 	protectedGroup.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 	doctorHandlers.RegisterProtectedRoutes(protectedGroup)
 
