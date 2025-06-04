@@ -1,13 +1,17 @@
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
-WORKDIR /app
+WORKDIR /go/src/github.com/printprince/vitalem
 
-# Копируем файлы зависимостей
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Копируем исходный код
+# Копируем все необходимые файлы
 COPY . .
+
+# Устанавливаем GOPATH и переходим в директорию сервиса
+ENV GOPATH=/go
+WORKDIR /go/src/github.com/printprince/vitalem/identity_service
+
+# Обновляем go.mod и go.sum
+RUN go mod tidy
+RUN go mod download
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api
@@ -21,8 +25,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 WORKDIR /app
 
 # Копируем исполняемый файл и конфигурацию
-COPY --from=builder /app/identity_service .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /go/src/github.com/printprince/vitalem/identity_service/identity_service .
+COPY --from=builder /go/src/github.com/printprince/vitalem/identity_service/config.yaml .
 
 EXPOSE 8801
 
