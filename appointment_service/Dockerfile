@@ -1,17 +1,14 @@
-# Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Install dependencies
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code and config
-COPY . .
+COPY ./appointment_service ./appointment_service
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment-service cmd/main.go
+RUN go mod download && go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service cmd/main.go
+
+# Переходим в директорию сервиса для сборки
+WORKDIR /app/appointment_service
 
 # Final stage
 FROM alpine:latest
