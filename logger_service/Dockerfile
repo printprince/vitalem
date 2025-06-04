@@ -3,11 +3,14 @@ FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Копируем файлы зависимостей
+# Копируем utils для локальных зависимостей
+COPY utils/ ./utils/
+
+# Копируем файлы зависимостей сервиса
 COPY logger_service/go.mod logger_service/go.sum ./
 RUN go mod download
 
-# Копируем исходный код
+# Копируем исходный код сервиса
 COPY logger_service/ .
 
 # Собираем приложение
