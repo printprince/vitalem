@@ -4,11 +4,11 @@ WORKDIR /app
 
 COPY ./appointment_service ./appointment_service
 
-# Build the application
-RUN go mod download && go mod tidy && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service cmd/main.go
-
 # Переходим в директорию сервиса для сборки
 WORKDIR /app/appointment_service
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service cmd/main.go
 
 # Final stage
 FROM alpine:latest
