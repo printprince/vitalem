@@ -3,33 +3,30 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Копируем файлы зависимостей
-COPY go.mod go.sum ./
+COPY appointment_service/go.mod appointment_service/go.sum ./
 RUN go mod download
 
 # Копируем исходный код
-COPY . .
+COPY appointment_service/ .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/main.go
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/api
 
-# Final stage
+# Финальный образ
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS requests
-RUN apk --no-cache add ca-certificates tzdata
+RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 
-WORKDIR /root/
+WORKDIR /app
 
-# Copy the binary and config from builder stage
+# Копируем исполняемый файл и конфигурацию
 COPY --from=builder /app/appointment_service .
 COPY --from=builder /app/config.yaml .
 
-# Expose port
-EXPOSE 8085
+EXPOSE 8805
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:8085/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8805/health || exit 1
 
-# Run the application
 CMD ["./appointment_service"] 

@@ -4,11 +4,11 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Копируем файлы зависимостей
-COPY go.mod go.sum ./
+COPY logger_service/go.mod logger_service/go.sum ./
 RUN go mod download
 
 # Копируем исходный код
-COPY . .
+COPY logger_service/ .
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o logger_service ./cmd/api

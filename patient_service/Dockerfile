@@ -3,11 +3,11 @@ FROM golang:1.21-alpine AS builder
 WORKDIR /app
 
 # Копируем файлы зависимостей
-COPY go.mod go.sum ./
+COPY patient_service/go.mod patient_service/go.sum ./
 RUN go mod download
 
 # Копируем исходный код
-COPY . .
+COPY patient_service/ .
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o patient_service ./cmd/api
