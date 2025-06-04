@@ -1,14 +1,16 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-COPY ./appointment_service ./appointment_service
+# Копируем файлы зависимостей
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Переходим в директорию сервиса для сборки
-WORKDIR /app/appointment_service
+# Копируем исходный код
+COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service cmd/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/main.go
 
 # Final stage
 FROM alpine:latest
@@ -19,7 +21,7 @@ RUN apk --no-cache add ca-certificates tzdata
 WORKDIR /root/
 
 # Copy the binary and config from builder stage
-COPY --from=builder /app/appointment-service .
+COPY --from=builder /app/appointment_service .
 COPY --from=builder /app/config.yaml .
 
 # Expose port
@@ -30,4 +32,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8085/health || exit 1
 
 # Run the application
-CMD ["./appointment-service"] 
+CMD ["./appointment_service"] 

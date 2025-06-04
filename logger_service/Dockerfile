@@ -1,22 +1,33 @@
 # Logger Service Dockerfile
-FROM golang:1.24-alpine AS builder
+FROM golang:1.21-alpine AS builder
 
 WORKDIR /app
 
-# Создаем структуру директорий для правильной работы с replace директивами
-COPY ./utils ./utils
-COPY ./logger_service ./logger_service
+# Копируем файлы зависимостей
+COPY go.mod go.sum ./
+RUN go mod download
 
-# Переходим в директорию сервиса для сборки
-WORKDIR /app/logger_service
+# Копируем исходный код
+COPY . .
 
-RUN go mod download && go mod tidy && CGO_ENABLED=0 GOOS=linux go build -o logger_service ./cmd/api
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o logger_service ./cmd/api
 
+# Финальный образ
 FROM alpine:latest
 
+RUN apk --no-cache add ca-certificates tzdata wget curl
+
 WORKDIR /app
-COPY --from=builder /app/logger_service/logger_service .
-COPY --from=builder /app/logger_service/config.yaml .
+
+# Копируем исполняемый файл и конфигурацию
+COPY --from=builder /app/logger_service .
+COPY --from=builder /app/config.yaml .
 
 EXPOSE 8802
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8802/health || exit 1
+
 CMD ["./logger_service"]
