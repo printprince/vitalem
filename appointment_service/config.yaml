@@ -1,0 +1,23 @@
+server:
+  host: "0.0.0.0"
+  port: "8085"
+
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "password"
+  db_name: "vitalem_appointments"
+  ssl_mode: "disable"
+
+logging:
+  level: "info"
+  format: "json"
+
+app:
+  name: "appointment_service"
+  version: "1.0.0"
+  environment: "development"
+
+auth:
+  jwt_secret: "your-super-secret-jwt-key-for-development" 
