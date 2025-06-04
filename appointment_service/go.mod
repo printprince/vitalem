@@ -1,12 +1,19 @@
 module github.com/printprince/vitalem/appointment_service
 
-go 1.23
+go 1.24
 
 toolchain go1.24.2
 
 require (
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/gabriel-vasile/mimetype v1.4.3
+	github.com/go-playground/locales v0.14.1
+	github.com/go-playground/universal-translator v0.18.1
+	github.com/go-playground/validator/v10 v10.19.0
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.11.4
+	github.com/leodido/go-urn v1.4.0
+	github.com/printprince/vitalem/utils v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.5.2
 	gorm.io/gorm v1.25.4

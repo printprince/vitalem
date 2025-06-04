@@ -1,12 +1,10 @@
 package router
 
 import (
-	"appointment_service/internal/handlers"
-
-	utilsMiddleware "utils/middleware"
-
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/printprince/vitalem/appointment_service/internal/handlers"
+	utilsMiddleware "github.com/printprince/vitalem/utils/middleware"
 )
 
 // SetupRoutes - настройка маршрутов

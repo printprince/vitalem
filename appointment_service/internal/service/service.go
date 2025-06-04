@@ -5,10 +5,9 @@ import (
 	"fmt"
 	"time"
 
-	"appointment_service/internal/models"
-	"appointment_service/internal/repository"
-
 	"github.com/google/uuid"
+	"github.com/printprince/vitalem/appointment_service/internal/models"
+	"github.com/printprince/vitalem/appointment_service/internal/repository"
 )
 
 // AppointmentService - интерфейс сервиса

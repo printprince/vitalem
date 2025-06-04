@@ -3,9 +3,8 @@ package repository
 import (
 	"time"
 
-	"appointment_service/internal/models"
-
 	"github.com/google/uuid"
+	"github.com/printprince/vitalem/appointment_service/internal/models"
 	"gorm.io/gorm"
 )
 

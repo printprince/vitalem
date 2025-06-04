@@ -3,11 +3,10 @@ package handlers
 import (
 	"net/http"
 
-	"appointment_service/internal/models"
-	"appointment_service/internal/service"
-
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
+	"github.com/printprince/vitalem/appointment_service/internal/models"
+	"github.com/printprince/vitalem/appointment_service/internal/service"
 )
 
 // AppointmentHandler - обработчик HTTP запросов

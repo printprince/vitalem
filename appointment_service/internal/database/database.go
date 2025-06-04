@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 
-	"appointment_service/internal/config"
-	"appointment_service/internal/models"
+	"github.com/printprince/vitalem/appointment_service/internal/config"
+	"github.com/printprince/vitalem/appointment_service/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
