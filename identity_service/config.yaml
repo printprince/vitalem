@@ -1,27 +1,27 @@
 server:
   host: 0.0.0.0
-  port: 8801 # Port for the identity_service
+  port: "8801" # Port for the identity_service
 
 database:
-  db_host: postgres
-  db_port: 5432
-  db_user: postgres
-  db_pass: 61324
+  host: postgres
+  port: 5432
+  user: postgres
+  password: 61324
   db_name: vitalem_db
-  db_ssl_mode: disable
+  ssl_mode: disable
 
 jwt:
-  jwt_secret: 4324pkh23sk4jh342alhdlfl2sdjf
-  jwt_expire: 24
+  secret: 4324pkh23sk4jh342alhdlfl2sdjf
+  expire: 24
 
 rabbitmq:
-  rmq_host: rabbitmq
-  rmq_port: 5672
-  rmq_user: guest
-  rmq_pass: guest
-  rmq_exchange: vitalem
-  rmq_user_queue: user.events
-  rmq_routing_key: user.created
+  host: rabbitmq
+  port: 5672
+  user: guest
+  password: guest
+  exchange: vitalem
+  user_queue: user.events
+  routing_key: user.created
 
 logging:
   console_level: info  # Только ошибки будут выводиться в консоль
