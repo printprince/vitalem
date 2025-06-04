@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -101,6 +102,14 @@ func main() {
 	e.Use(echomiddleware.Logger())
 	e.Use(echomiddleware.Recover())
 	e.Use(middleware.CORSMiddleware())
+
+	// Добавляем эндпоинт проверки здоровья
+	e.HEAD("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	e.GET("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 
 	// Настройка защищенных маршрутов
 	protected := e.Group("/api/v1")

@@ -49,6 +49,14 @@ func main() {
 	e := echo.New()
 	e.HideBanner = true
 
+	// Добавляем эндпоинт проверки здоровья
+	e.HEAD("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+	e.GET("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
+
 	// Настройка маршрутов
 	router.SetupRoutes(e, handler, cfg.Auth.JWTSecret)
 

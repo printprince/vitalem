@@ -156,6 +156,9 @@ func main() {
 	e.Use(middleware.CORSMiddleware())
 
 	// Добавляем эндпоинт проверки здоровья
+	e.HEAD("/health", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	})
 	e.GET("/health", func(c echo.Context) error {
 		return c.NoContent(http.StatusOK)
 	})
@@ -181,7 +184,7 @@ func main() {
 			})
 		}
 
-		serverAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
+		serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
 		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
 			if loggerClient != nil {
 				loggerClient.Error("Ошибка запуска сервера", map[string]interface{}{
