@@ -9,6 +9,8 @@ require (
 	gorm.io/gorm v1.26.1
 )
 
+replace github.com/printprince/vitalem/utils => ../utils
+
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible // indirect
 	github.com/gabriel-vasile/mimetype v1.4.8 // indirect

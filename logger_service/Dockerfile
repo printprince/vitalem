@@ -10,6 +10,10 @@ COPY . .
 ENV GOPATH=/go
 WORKDIR /go/src/github.com/printprince/vitalem/logger_service
 
+# Обновляем go.mod и go.sum
+RUN go mod tidy
+RUN go mod download
+
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o logger_service ./cmd/api
 
