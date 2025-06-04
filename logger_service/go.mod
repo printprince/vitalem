@@ -1,12 +1,10 @@
 module github.com/printprince/vitalem/logger_service
 
-go 1.23.0
-
-toolchain go1.24.2
+go 1.24
 
 require (
 	github.com/labstack/echo/v4 v4.13.4
-	github.com/printprince/vitalem/utils v0.0.0
+	github.com/printprince/vitalem/utils v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/gorm v1.26.1
 )
