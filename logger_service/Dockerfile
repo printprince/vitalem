@@ -1,17 +1,14 @@
 # Logger Service Dockerfile
 FROM golang:1.24-alpine AS builder
 
-WORKDIR /app
+WORKDIR /go/src/github.com/printprince/vitalem
 
-# Копируем utils для локальных зависимостей
-COPY utils/ ./utils/
+# Копируем все необходимые файлы
+COPY . .
 
-# Копируем файлы зависимостей сервиса
-COPY logger_service/go.mod logger_service/go.sum ./
-RUN go mod download
-
-# Копируем исходный код сервиса
-COPY logger_service/ .
+# Устанавливаем GOPATH и переходим в директорию сервиса
+ENV GOPATH=/go
+WORKDIR /go/src/github.com/printprince/vitalem/logger_service
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o logger_service ./cmd/api
@@ -24,8 +21,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl
 WORKDIR /app
 
 # Копируем исполняемый файл и конфигурацию
-COPY --from=builder /app/logger_service .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /go/src/github.com/printprince/vitalem/logger_service/logger_service .
+COPY --from=builder /go/src/github.com/printprince/vitalem/logger_service/config.yaml .
 
 EXPOSE 8802
 

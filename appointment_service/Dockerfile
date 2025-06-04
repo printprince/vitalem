@@ -1,17 +1,13 @@
 FROM golang:1.24-alpine AS builder
 
-WORKDIR /app
+WORKDIR /go/src/github.com/printprince/vitalem
 
-# Копируем utils и logger_service для локальных зависимостей
-COPY utils/ ./utils/
-COPY logger_service/ ./logger_service/
+# Копируем все необходимые файлы
+COPY . .
 
-# Копируем файлы зависимостей сервиса
-COPY appointment_service/go.mod appointment_service/go.sum ./
-RUN go mod download
-
-# Копируем исходный код сервиса
-COPY appointment_service/ .
+# Устанавливаем GOPATH и переходим в директорию сервиса
+ENV GOPATH=/go
+WORKDIR /go/src/github.com/printprince/vitalem/appointment_service
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/api
@@ -24,8 +20,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl postgresql-client
 WORKDIR /app
 
 # Копируем исполняемый файл и конфигурацию
-COPY --from=builder /app/appointment_service .
-COPY --from=builder /app/config.yaml .
+COPY --from=builder /go/src/github.com/printprince/vitalem/appointment_service/appointment_service .
+COPY --from=builder /go/src/github.com/printprince/vitalem/appointment_service/config.yaml .
 
 EXPOSE 8805
 
