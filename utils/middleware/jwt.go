@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
@@ -38,16 +37,15 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 			tokenString := parts[1]
 
 			// Debug: логируем информацию о токене
-			fmt.Printf("DEBUG JWT: Validating token\n")
-			fmt.Printf("DEBUG JWT: Token preview: %s...\n", tokenString[:min(20, len(tokenString))])
-			fmt.Printf("DEBUG JWT: Secret length: %d\n", len(jwtSecret))
-			fmt.Printf("DEBUG JWT: Secret preview: %s...\n", jwtSecret[:min(8, len(jwtSecret))])
+			c.Logger().Infof("DEBUG JWT: Validating token")
+			c.Logger().Infof("DEBUG JWT: Token preview: %s...", tokenString[:min(20, len(tokenString))])
+			c.Logger().Infof("DEBUG JWT: Secret length: %d", len(jwtSecret))
+			c.Logger().Infof("DEBUG JWT: Secret preview: %s...", jwtSecret[:min(8, len(jwtSecret))])
 
 			// Парсим и проверяем токен
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				// Проверяем алгоритм токена
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-					fmt.Printf("DEBUG JWT: Invalid signing method: %v\n", token.Header["alg"])
 					return nil, echo.NewHTTPError(http.StatusUnauthorized, "Invalid token signing method")
 				}
 
@@ -57,12 +55,12 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 
 			// Проверяем наличие ошибок и валидность токена
 			if err != nil {
-				fmt.Printf("DEBUG JWT: Parse error: %v\n", err)
+				c.Logger().Errorf("DEBUG JWT: Parse error: %v", err)
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired token")
 			}
 
 			if !token.Valid {
-				fmt.Printf("DEBUG JWT: Token is not valid\n")
+				c.Logger().Errorf("DEBUG JWT: Token is not valid")
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired token")
 			}
 
