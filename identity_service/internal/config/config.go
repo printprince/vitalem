@@ -108,6 +108,12 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.JWT.Secret = jwtSecret
 	}
 
+	if jwtExpireStr := os.Getenv("JWT_EXPIRE"); jwtExpireStr != "" {
+		if jwtExpire, err := strconv.Atoi(jwtExpireStr); err == nil {
+			cfg.JWT.Expire = jwtExpire
+		}
+	}
+
 	// RabbitMQ
 	if rmqHost := os.Getenv("RMQ_HOST"); rmqHost != "" {
 		cfg.RabbitMQ.Host = rmqHost

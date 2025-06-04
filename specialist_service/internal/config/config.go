@@ -131,6 +131,12 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.JWT.Secret = jwtSecret
 	}
 
+	if jwtExpireStr := os.Getenv("JWT_EXPIRE"); jwtExpireStr != "" {
+		if jwtExpire, err := strconv.Atoi(jwtExpireStr); err == nil {
+			cfg.JWT.Expire = jwtExpire
+		}
+	}
+
 	// Logging
 	if loggerURL := os.Getenv("LOGGER_SERVICE_URL"); loggerURL != "" {
 		if cfg.Logging == nil {

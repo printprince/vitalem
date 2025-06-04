@@ -171,6 +171,7 @@ services:
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
       - LOG_LEVEL=info
     ports:
       - "8801:8801"
@@ -206,6 +207,7 @@ services:
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
       - LOG_LEVEL=info
     ports:
       - "8803:8803"
@@ -243,6 +245,7 @@ services:
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
       - LOG_LEVEL=info
     ports:
       - "8804:8804"
@@ -274,6 +277,7 @@ services:
       - DB_SSLMODE=disable
       - NOTIFICATION_URL=http://notification_service:8806/api/v1
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
       - LOGGER_LEVEL=info
     ports:
       - "8805:8805"
@@ -305,6 +309,7 @@ services:
       - DB_NAME=vitalem_db
       - DB_SSLMODE=disable
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
       - LOG_LEVEL=info
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=465

@@ -12,7 +12,7 @@ database:
 
 jwt:
   secret: 4324pkh23sk4jh342alhdlfl2sdjf
-  expire: 24
+  expire: 168
 
 rabbitmq:
   host: rabbitmq

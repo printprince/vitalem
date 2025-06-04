@@ -26,7 +26,7 @@ rabbitmq:
 
 jwt:
   secret: 4324pkh23sk4jh342alhdlfl2sdjf
-  expire: 24
+  expire: 168
 
 logging:
   console_level: info   # Уровень логов для консоли
