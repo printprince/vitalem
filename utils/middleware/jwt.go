@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -8,6 +9,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v4"
 )
+
+// min возвращает минимальное из двух чисел
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
 
 // JWTMiddleware - Middleware для проверки JWT токена
 func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
@@ -28,10 +37,17 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 			// Получаем токен из заголовка
 			tokenString := parts[1]
 
+			// Debug: логируем информацию о токене
+			fmt.Printf("DEBUG JWT: Validating token\n")
+			fmt.Printf("DEBUG JWT: Token preview: %s...\n", tokenString[:min(20, len(tokenString))])
+			fmt.Printf("DEBUG JWT: Secret length: %d\n", len(jwtSecret))
+			fmt.Printf("DEBUG JWT: Secret preview: %s...\n", jwtSecret[:min(8, len(jwtSecret))])
+
 			// Парсим и проверяем токен
 			token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 				// Проверяем алгоритм токена
 				if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+					fmt.Printf("DEBUG JWT: Invalid signing method: %v\n", token.Header["alg"])
 					return nil, echo.NewHTTPError(http.StatusUnauthorized, "Invalid token signing method")
 				}
 
@@ -40,7 +56,13 @@ func JWTMiddleware(jwtSecret string) echo.MiddlewareFunc {
 			})
 
 			// Проверяем наличие ошибок и валидность токена
-			if err != nil || !token.Valid {
+			if err != nil {
+				fmt.Printf("DEBUG JWT: Parse error: %v\n", err)
+				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired token")
+			}
+
+			if !token.Valid {
+				fmt.Printf("DEBUG JWT: Token is not valid\n")
 				return echo.NewHTTPError(http.StatusUnauthorized, "Invalid or expired token")
 			}
 
