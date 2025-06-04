@@ -132,7 +132,7 @@ func main() {
 
 	// Подключаем RabbitMQ если настроен
 	if cfg.RabbitMQ.Host != "" {
-		rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
+		rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%d/",
 			cfg.RabbitMQ.User,
 			cfg.RabbitMQ.Password,
 			cfg.RabbitMQ.Host,
