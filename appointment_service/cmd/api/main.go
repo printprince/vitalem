@@ -4,12 +4,12 @@ import (
 	"log"
 	"net/http"
 
-	"appointment_service/internal/config"
-	"appointment_service/internal/database"
-	"appointment_service/internal/handlers"
-	"appointment_service/internal/repository"
-	"appointment_service/internal/router"
-	"appointment_service/internal/service"
+	"github.com/printprince/vitalem/appointment_service/internal/config"
+	"github.com/printprince/vitalem/appointment_service/internal/database"
+	"github.com/printprince/vitalem/appointment_service/internal/handlers"
+	"github.com/printprince/vitalem/appointment_service/internal/repository"
+	"github.com/printprince/vitalem/appointment_service/internal/router"
+	"github.com/printprince/vitalem/appointment_service/internal/service"
 
 	"github.com/labstack/echo/v4"
 )
