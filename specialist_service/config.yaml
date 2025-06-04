@@ -1,6 +1,6 @@
 server:
   host: 0.0.0.0
-  port: "8803" # Port for the specialist_service
+  port: 8803 # Port for the specialist_service
   read_timeout: 10s
   write_timeout: 10s
   shutdown_timeout: 5s
