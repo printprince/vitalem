@@ -5,16 +5,14 @@ WORKDIR /go/src/github.com/printprince/vitalem
 # Копируем все необходимые файлы
 COPY . .
 
-# Устанавливаем GOPATH и переходим в директорию сервиса
+# Устанавливаем GOPATH
 ENV GOPATH=/go
-WORKDIR /go/src/github.com/printprince/vitalem/identity_service
 
 # Обновляем go.mod и go.sum
-RUN go mod tidy
-RUN go mod download
+RUN cd identity_service && go mod tidy && go mod download
 
 # Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api
+RUN cd identity_service && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o identity_service ./cmd/api
 
 # Финальный образ
 FROM alpine:latest

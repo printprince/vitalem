@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"identity_service/internal/models"
 	"log"
+
+	"github.com/printprince/vitalem/identity_service/internal/models"
 
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
 	"github.com/streadway/amqp"
