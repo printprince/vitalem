@@ -83,7 +83,7 @@ func main() {
 	}
 
 	// Настройка RabbitMQ URL
-	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%s/",
+	rabbitMQURL := fmt.Sprintf("amqp://%s:%s@%s:%d/",
 		cfg.RabbitMQ.User,
 		cfg.RabbitMQ.Password,
 		cfg.RabbitMQ.Host,
@@ -184,7 +184,7 @@ func main() {
 			})
 		}
 
-		serverAddr := fmt.Sprintf("%s:%s", cfg.Server.Host, cfg.Server.Port)
+		serverAddr := fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port)
 		if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
 			if loggerClient != nil {
 				loggerClient.Error("Ошибка запуска сервера", map[string]interface{}{
