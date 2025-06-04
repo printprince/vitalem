@@ -12,7 +12,7 @@ ENV GOPATH=/go
 RUN cd appointment_service && go mod tidy && go mod download
 
 # Собираем приложение
-RUN cd appointment_service && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/main.go
+RUN cd appointment_service && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o appointment_service ./cmd/api/main.go
 
 # Финальный образ
 FROM alpine:latest
