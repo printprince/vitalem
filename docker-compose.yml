@@ -258,13 +258,13 @@ services:
     networks:
       - app-network
 
-  # Calendar Service - сервис для работы с календарем и записями
+  # Appointment Service - сервис для работы с календарем и записями
   # Управляет расписанием врачей, бронированием слотов и записями пациентов
-  calendar_service:
+  appointment_service:
     build:
       context: .
-      dockerfile: ./CalendarService/Dockerfile
-    container_name: calendar_service
+      dockerfile: ./appointment_service/Dockerfile
+    container_name: appointment_service
     environment:
       - DB_HOST=postgres
       - DB_PORT=5432
