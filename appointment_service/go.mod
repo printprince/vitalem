@@ -13,6 +13,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/labstack/echo/v4 v4.11.4
 	github.com/leodido/go-urn v1.4.0
+	github.com/lib/pq v1.10.9
 	github.com/printprince/vitalem/utils v0.0.0-00010101000000-000000000000
 	gopkg.in/yaml.v3 v3.0.1
 	gorm.io/driver/postgres v1.5.2

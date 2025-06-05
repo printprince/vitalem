@@ -1,88 +1,12 @@
 package models
 
 import (
-	"database/sql/driver"
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"gorm.io/gorm"
 )
-
-// WorkDays represents a slice of integers for PostgreSQL array
-type WorkDays []int
-
-// Scan implements the Scanner interface
-func (w *WorkDays) Scan(value interface{}) error {
-	if value == nil {
-		*w = nil
-		return nil
-	}
-
-	switch v := value.(type) {
-	case []byte:
-		// Parse the PostgreSQL array format: {1,2,3,4,5}
-		str := string(v)
-		str = strings.Trim(str, "{}")
-		if str == "" {
-			*w = WorkDays{}
-			return nil
-		}
-
-		parts := strings.Split(str, ",")
-		result := make(WorkDays, len(parts))
-		for i, part := range parts {
-			num, err := strconv.Atoi(strings.TrimSpace(part))
-			if err != nil {
-				return err
-			}
-			result[i] = num
-		}
-		*w = result
-		return nil
-	case string:
-		// Same as []byte case
-		str := strings.Trim(v, "{}")
-		if str == "" {
-			*w = WorkDays{}
-			return nil
-		}
-
-		parts := strings.Split(str, ",")
-		result := make(WorkDays, len(parts))
-		for i, part := range parts {
-			num, err := strconv.Atoi(strings.TrimSpace(part))
-			if err != nil {
-				return err
-			}
-			result[i] = num
-		}
-		*w = result
-		return nil
-	default:
-		return fmt.Errorf("cannot scan %T into WorkDays", value)
-	}
-}
-
-// Value implements the driver Valuer interface
-func (w WorkDays) Value() (driver.Value, error) {
-	if w == nil {
-		return nil, nil
-	}
-
-	// Convert to PostgreSQL array format: {1,2,3,4,5}
-	if len(w) == 0 {
-		return "{}", nil
-	}
-
-	strs := make([]string, len(w))
-	for i, v := range w {
-		strs[i] = strconv.Itoa(v)
-	}
-	return "{" + strings.Join(strs, ",") + "}", nil
-}
 
 // DoctorSchedule - расписание работы врача
 type DoctorSchedule struct {
@@ -91,7 +15,7 @@ type DoctorSchedule struct {
 	Name     string    `gorm:"type:varchar(255);not null" json:"name"` // "Основное расписание"
 
 	// Дни недели: [1,2,3,4,5] = Пн-Пт
-	WorkDays WorkDays `json:"work_days"`
+	WorkDays pq.IntArray `gorm:"type:integer[]" json:"work_days"`
 
 	// Время работы
 	StartTime string `gorm:"type:varchar(5);not null" json:"start_time"` // "09:00"

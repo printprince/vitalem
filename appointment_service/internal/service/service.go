@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 	"github.com/printprince/vitalem/appointment_service/internal/models"
 	"github.com/printprince/vitalem/appointment_service/internal/repository"
 )
@@ -59,7 +60,7 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 	schedule := &models.DoctorSchedule{
 		DoctorID:     doctorID,
 		Name:         req.Name,
-		WorkDays:     req.WorkDays,
+		WorkDays:     pq.IntArray(req.WorkDays),
 		StartTime:    req.StartTime,
 		EndTime:      req.EndTime,
 		BreakStart:   req.BreakStart,
@@ -384,7 +385,7 @@ func (s *appointmentService) scheduleToResponse(schedule *models.DoctorSchedule)
 		ID:           schedule.ID,
 		DoctorID:     schedule.DoctorID,
 		Name:         schedule.Name,
-		WorkDays:     schedule.WorkDays,
+		WorkDays:     []int(schedule.WorkDays),
 		StartTime:    schedule.StartTime,
 		EndTime:      schedule.EndTime,
 		BreakStart:   schedule.BreakStart,
@@ -445,7 +446,7 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 		schedule.Name = *req.Name
 	}
 	if req.WorkDays != nil {
-		schedule.WorkDays = *req.WorkDays
+		schedule.WorkDays = pq.IntArray(*req.WorkDays)
 	}
 	if req.StartTime != nil {
 		schedule.StartTime = *req.StartTime
