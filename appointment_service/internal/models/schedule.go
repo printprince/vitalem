@@ -91,7 +91,7 @@ type DoctorSchedule struct {
 	Name     string    `gorm:"type:varchar(255);not null" json:"name"` // "Основное расписание"
 
 	// Дни недели: [1,2,3,4,5] = Пн-Пт
-	WorkDays WorkDays `gorm:"type:integer[]" json:"work_days"`
+	WorkDays WorkDays `json:"work_days"`
 
 	// Время работы
 	StartTime string `gorm:"type:varchar(5);not null" json:"start_time"` // "09:00"
