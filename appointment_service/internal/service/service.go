@@ -693,6 +693,9 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
+	// Сохраняем оригинальные значения для проверки конфликтов
+	originalSchedule := *schedule
+
 	// Обновляем только переданные поля
 	if req.Name != nil {
 		schedule.Name = *req.Name
@@ -732,11 +735,61 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 		schedule.IsDefault = *req.IsDefault
 	}
 
+	// Проверяем конфликты если расписание активно и изменились критичные поля
+	if schedule.IsActive {
+		timeChanged := originalSchedule.StartTime != schedule.StartTime || originalSchedule.EndTime != schedule.EndTime
+		daysChanged := !s.workDaysEqual(originalSchedule.WorkDays, schedule.WorkDays)
+
+		if timeChanged || daysChanged {
+			s.logInfo("Checking conflicts after schedule update", map[string]interface{}{
+				"doctorID":    doctorID.String(),
+				"scheduleID":  scheduleID.String(),
+				"timeChanged": timeChanged,
+				"daysChanged": daysChanged,
+			})
+
+			if err := s.checkScheduleConflictsForExisting(doctorID, schedule); err != nil {
+				s.logError("Cannot update schedule due to conflicts", map[string]interface{}{
+					"doctorID":   doctorID.String(),
+					"scheduleID": scheduleID.String(),
+					"error":      err.Error(),
+				})
+				return nil, err
+			}
+		}
+	}
+
 	if err := s.repo.UpdateSchedule(schedule); err != nil {
 		return nil, fmt.Errorf("failed to update schedule: %w", err)
 	}
 
 	return s.scheduleToResponse(schedule), nil
+}
+
+// workDaysEqual сравнивает два массива рабочих дней
+func (s *appointmentService) workDaysEqual(days1, days2 []int) bool {
+	if len(days1) != len(days2) {
+		return false
+	}
+
+	// Создаем мапы для сравнения
+	map1 := make(map[int]bool)
+	map2 := make(map[int]bool)
+
+	for _, day := range days1 {
+		map1[day] = true
+	}
+	for _, day := range days2 {
+		map2[day] = true
+	}
+
+	for day := range map1 {
+		if !map2[day] {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (s *appointmentService) DeleteSchedule(doctorID, scheduleID uuid.UUID) error {
@@ -766,11 +819,73 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
+	// Если активируем расписание - проверяем конфликты
+	if req.IsActive && !schedule.IsActive {
+		s.logInfo("Checking conflicts before activating schedule", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+			"name":       schedule.Name,
+		})
+
+		if err := s.checkScheduleConflictsForExisting(doctorID, schedule); err != nil {
+			s.logError("Cannot activate schedule due to conflicts", map[string]interface{}{
+				"doctorID":   doctorID.String(),
+				"scheduleID": scheduleID.String(),
+				"error":      err.Error(),
+			})
+			return nil, err
+		}
+	}
+
 	schedule.IsActive = req.IsActive
 
 	if err := s.repo.UpdateSchedule(schedule); err != nil {
 		return nil, fmt.Errorf("failed to toggle schedule: %w", err)
 	}
 
+	s.logInfo("Schedule toggled successfully", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": scheduleID.String(),
+		"isActive":   req.IsActive,
+	})
+
 	return s.scheduleToResponse(schedule), nil
+}
+
+// checkScheduleConflictsForExisting проверяет конфликты для существующего расписания
+func (s *appointmentService) checkScheduleConflictsForExisting(doctorID uuid.UUID, schedule *models.DoctorSchedule) error {
+	existingSchedules, err := s.repo.GetDoctorSchedules(doctorID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing schedules: %w", err)
+	}
+
+	startTime, err := time.Parse("15:04", schedule.StartTime)
+	if err != nil {
+		return fmt.Errorf("invalid start time format: %w", err)
+	}
+
+	endTime, err := time.Parse("15:04", schedule.EndTime)
+	if err != nil {
+		return fmt.Errorf("invalid end time format: %w", err)
+	}
+
+	for _, existing := range existingSchedules {
+		// Пропускаем само расписание и неактивные расписания
+		if existing.ID == schedule.ID || !existing.IsActive {
+			continue
+		}
+
+		existingStart, _ := time.Parse("15:04", existing.StartTime)
+		existingEnd, _ := time.Parse("15:04", existing.EndTime)
+
+		// Проверяем пересечение рабочих дней
+		if s.hasWorkDayConflict(schedule.WorkDays, existing.WorkDays) {
+			// Проверяем пересечение времени
+			if s.hasTimeConflict(startTime, endTime, existingStart, existingEnd) {
+				return fmt.Errorf("schedule conflicts with active schedule '%s' on overlapping work days and times", existing.Name)
+			}
+		}
+	}
+
+	return nil
 }
