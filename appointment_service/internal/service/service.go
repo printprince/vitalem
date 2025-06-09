@@ -31,6 +31,9 @@ type AppointmentService interface {
 	// Exceptions
 	AddException(doctorID uuid.UUID, req *models.AddExceptionRequest) (*models.ExceptionResponse, error)
 	GetDoctorExceptions(doctorID uuid.UUID, startDate, endDate string) ([]*models.ExceptionResponse, error)
+
+	// New method for forcing clean slots of schedule
+	DeleteScheduleSlots(doctorID, scheduleID uuid.UUID) error
 }
 
 // appointmentService - реализация сервиса
@@ -802,9 +805,26 @@ func (s *appointmentService) DeleteSchedule(doctorID, scheduleID uuid.UUID) erro
 		return errors.New("schedule doesn't belong to this doctor")
 	}
 
+	s.logInfo("Starting schedule deletion", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": scheduleID.String(),
+		"name":       schedule.Name,
+	})
+
 	if err := s.repo.DeleteSchedule(scheduleID); err != nil {
+		s.logError("Failed to delete schedule", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+			"error":      err.Error(),
+		})
 		return fmt.Errorf("failed to delete schedule: %w", err)
 	}
+
+	s.logInfo("Schedule and available slots deleted successfully", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": scheduleID.String(),
+		"note":       "Booked appointments are preserved for history",
+	})
 
 	return nil
 }
@@ -885,6 +905,24 @@ func (s *appointmentService) checkScheduleConflictsForExisting(doctorID uuid.UUI
 				return fmt.Errorf("schedule conflicts with active schedule '%s' on overlapping work days and times", existing.Name)
 			}
 		}
+	}
+
+	return nil
+}
+
+// New method for forcing clean slots of schedule
+func (s *appointmentService) DeleteScheduleSlots(doctorID, scheduleID uuid.UUID) error {
+	schedule, err := s.repo.GetScheduleByID(scheduleID)
+	if err != nil {
+		return fmt.Errorf("schedule not found: %w", err)
+	}
+
+	if schedule.DoctorID != doctorID {
+		return errors.New("schedule doesn't belong to this doctor")
+	}
+
+	if err := s.repo.DeleteScheduleSlots(scheduleID); err != nil {
+		return fmt.Errorf("failed to delete schedule slots: %w", err)
 	}
 
 	return nil

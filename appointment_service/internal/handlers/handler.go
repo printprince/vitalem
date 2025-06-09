@@ -322,6 +322,37 @@ func (h *AppointmentHandler) GenerateSlots(c echo.Context) error {
 	})
 }
 
+// DeleteScheduleSlots - DELETE /api/doctor/schedules/:id/slots
+func (h *AppointmentHandler) DeleteScheduleSlots(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	scheduleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid schedule ID",
+		})
+	}
+
+	if err := h.service.DeleteScheduleSlots(userID, scheduleID); err != nil {
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    "Schedule slots deleted successfully",
+	})
+}
+
 // === APPOINTMENT ENDPOINTS ===
 
 // GetAvailableSlots - GET /api/doctors/:id/available-slots?date=2024-06-15

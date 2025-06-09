@@ -36,6 +36,7 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 		doctor.DELETE("/schedules/:id", handler.DeleteSchedule)             // Удалить расписание
 		doctor.PATCH("/schedules/:id/toggle", handler.ToggleSchedule)       // Активировать/деактивировать
 		doctor.POST("/schedules/:id/generate-slots", handler.GenerateSlots) // Генерация слотов
+		doctor.DELETE("/schedules/:id/slots", handler.DeleteScheduleSlots)  // Удалить слоты расписания
 
 		// Doctor's appointments - врач видит свои записи
 		doctor.GET("/appointments", handler.GetDoctorAppointments)
