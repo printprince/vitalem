@@ -22,6 +22,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # RabbitMQ - брокер сообщений для асинхронного взаимодействия между сервисами
   # Используем для событийно-ориентированной коммуникации (event-driven)
@@ -44,6 +49,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ELK-стек для централизованного логирования и мониторинга
   # Elasticsearch - NoSQL БД для хранения и индексации логов
@@ -67,6 +77,7 @@ services:
       - "thread_pool.write.queue_size=1000"
       - "thread_pool.search.queue_size=1000"
       - "thread_pool.get.queue_size=1000"
+      - logger.level=WARN
     ulimits:
       memlock:
         soft: -1
@@ -89,6 +100,11 @@ services:
       resources:
         limits:
           memory: 1.8G
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Kibana - веб-интерфейс для Elasticsearch
   kibana:
@@ -103,6 +119,7 @@ services:
       - XPACK_SECURITY_ENCRYPTIONKEY=something_at_least_32_characters_long
       - XPACK_REPORTING_ENCRYPTIONKEY=something_at_least_32_characters_long
       - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=something_at_least_32_characters_long
+      - LOGGING_LEVEL=warn
     ports:
       - "5601:5601"
     depends_on:
@@ -114,6 +131,11 @@ services:
       resources:
         limits:
           memory: 768M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Filebeat - агент для сбора и отправки логов
   filebeat:
@@ -129,6 +151,11 @@ services:
       - elasticsearch
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   # Logger Service - кастомный сервис для централизованного логирования
   # Принимает логи от всех микросервисов через REST API
@@ -140,14 +167,19 @@ services:
     container_name: logger_service
     environment:
       - ELASTICSEARCH_URL=http://elasticsearch:9200
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
     ports:
       - "8802:8802"
     depends_on:
       elasticsearch:
-        condition: service_healthy
+        condition: service_started
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Identity Service - сервис аутентификации и управления пользователями
   # Отвечает за регистрацию, логин, JWT-токены и управление профилями юзеров
@@ -174,7 +206,7 @@ services:
       - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
     ports:
       - "8801:8801"
     depends_on:
@@ -186,6 +218,11 @@ services:
         condition: service_started
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Specialist Service - сервис для работы с врачами/специалистами
   # Хранит профили врачей, специализации, расписания и т.д.
@@ -213,7 +250,7 @@ services:
       - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
     ports:
       - "8803:8803"
     depends_on:
@@ -227,6 +264,11 @@ services:
         condition: service_started
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Patient Service - сервис для работы с пациентами
   # Хранит медицинские профили, историю болезней, рецепты и т.д.
@@ -254,7 +296,7 @@ services:
       - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - LOG_LEVEL=info
+      - LOG_LEVEL=warn
     ports:
       - "8804:8804"
     depends_on:
@@ -268,6 +310,11 @@ services:
         condition: service_started
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Appointment Service - сервис для работы с календарем и записями
   # Управляет расписанием врачей, бронированием слотов и записями пациентов
@@ -286,8 +333,8 @@ services:
       - NOTIFICATION_URL=http://notification_service:8806/api/v1
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - CONSOLE_LOG_LEVEL=info
-      - SERVICE_LOG_LEVEL=info
+      - CONSOLE_LOG_LEVEL=warn
+      - SERVICE_LOG_LEVEL=warn
       - LOGGER_SERVICE_URL=http://logger_service:8802
     ports:
       - "8805:8805"
@@ -305,6 +352,11 @@ services:
       retries: 3
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # Notification Service - сервис для отправки уведомлений
   # Отправляет email, SMS, Telegram уведомления пользователям
@@ -322,8 +374,8 @@ services:
       - DB_SSLMODE=disable
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - CONSOLE_LOG_LEVEL=info
-      - SERVICE_LOG_LEVEL=info
+      - CONSOLE_LOG_LEVEL=warn
+      - SERVICE_LOG_LEVEL=warn
       - LOGGER_SERVICE_URL=http://logger_service:8802
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=465
@@ -337,10 +389,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
-      logger_service:
-        condition: service_started
+      rabbitmq:
+        condition: service_healthy
     networks:
       - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   app-network:
