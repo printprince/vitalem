@@ -25,27 +25,27 @@ type Config struct {
 		ShutdownTimeout time.Duration `yaml:"shutdown_timeout"`
 	} `yaml:"server"`
 	Database struct {
-		Host     string `yaml:"db_host"`
-		Port     int    `yaml:"db_port"`
-		User     string `yaml:"db_user"`
-		Password string `yaml:"db_pass"`
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
 		DBName   string `yaml:"db_name"`
-		SSLMode  string `yaml:"db_ssl_mode"`
-		Schema   string `yaml:"db_schema"`
+		SSLMode  string `yaml:"ssl_mode"`
+		Schema   string `yaml:"schema"`
 	} `yaml:"database"`
 	RabbitMQ struct {
-		Host            string `yaml:"rmq_host"`
-		Port            string `yaml:"rmq_port"`
-		User            string `yaml:"rmq_user"`
-		Password        string `yaml:"rmq_pass"`
-		Exchange        string `yaml:"rmq_exchange"`
-		DoctorQueueName string `yaml:"rmq_doctor_queue"`
-		UserQueueName   string `yaml:"rmq_user_queue"`
-		RoutingKey      string `yaml:"rmq_routing_key"`
+		Host            string `yaml:"host"`
+		Port            string `yaml:"port"`
+		User            string `yaml:"user"`
+		Password        string `yaml:"password"`
+		Exchange        string `yaml:"exchange"`
+		DoctorQueueName string `yaml:"doctor_queue"`
+		UserQueueName   string `yaml:"user_queue"`
+		RoutingKey      string `yaml:"routing_key"`
 	} `yaml:"rabbitmq"`
 	JWT struct {
-		Secret string `yaml:"jwt_secret"`
-		Expire int    `yaml:"jwt_expire"`
+		Secret string `yaml:"secret"`
+		Expire int    `yaml:"expire"`
 	} `yaml:"jwt"`
 	Logging *LoggingConfig `yaml:"logging"`
 }
