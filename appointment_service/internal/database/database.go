@@ -44,9 +44,8 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	// Автоматическая миграция ТОЛЬКО для таблиц без конфликтов
-	// DoctorSchedule исключена из-за конфликтов схемы
+	// DoctorSchedule и ScheduleException исключены из-за конфликтов схемы
 	err := db.AutoMigrate(
-		&models.ScheduleException{},
 		&models.Appointment{},
 	)
 	if err != nil {
@@ -54,7 +53,7 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	log.Println("✅ Database migrations completed successfully")
-	log.Println("📝 NOTE: doctor_schedules table is managed manually to avoid schema conflicts")
+	log.Println("📝 NOTE: doctor_schedules and schedule_exceptions tables are managed manually to avoid schema conflicts")
 	return nil
 }
 
