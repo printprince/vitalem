@@ -60,7 +60,7 @@ func (r *appointmentRepository) GetDoctorSchedules(doctorID uuid.UUID) ([]*model
 
 func (r *appointmentRepository) GetScheduleByID(id uuid.UUID) (*models.DoctorSchedule, error) {
 	var schedule models.DoctorSchedule
-	err := r.db.Where("id = ? AND is_active = ?", id, true).First(&schedule).Error
+	err := r.db.Where("id = ?", id).First(&schedule).Error
 	if err != nil {
 		return nil, err
 	}
