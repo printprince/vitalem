@@ -38,9 +38,9 @@ func ConnectDB(cfg *config.Config) (*gorm.DB, error) {
 func RunMigrations(db *gorm.DB) error {
 	log.Println("🔄 Running database migrations...")
 
-	// Ручная миграция для изменения структуры doctor_schedules
-	if err := migrateScheduleWorkDays(db); err != nil {
-		return fmt.Errorf("failed to migrate schedule work days: %w", err)
+	// Проверяем и исправляем структуру doctor_schedules если нужно
+	if err := checkAndFixScheduleTable(db); err != nil {
+		return fmt.Errorf("failed to check/fix schedule table: %w", err)
 	}
 
 	// Автоматическая миграция моделей
@@ -57,11 +57,11 @@ func RunMigrations(db *gorm.DB) error {
 	return nil
 }
 
-// migrateScheduleWorkDays - миграция для изменения work_days на work_days_json
-func migrateScheduleWorkDays(db *gorm.DB) error {
-	log.Println("🔄 Migrating doctor_schedules work_days to work_days_json...")
+// checkAndFixScheduleTable - проверяет и исправляет структуру таблицы doctor_schedules
+func checkAndFixScheduleTable(db *gorm.DB) error {
+	log.Println("🔍 Checking doctor_schedules table structure...")
 
-	// Проверяем существует ли таблица doctor_schedules
+	// Проверяем существует ли таблица
 	var tableExists bool
 	err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules')").Scan(&tableExists).Error
 	if err != nil {
@@ -69,106 +69,49 @@ func migrateScheduleWorkDays(db *gorm.DB) error {
 	}
 
 	if !tableExists {
-		log.Println("📝 Table doctor_schedules doesn't exist yet, skipping migration")
+		log.Println("📝 Table doctor_schedules doesn't exist yet, will be created by AutoMigrate")
 		return nil
 	}
 
-	// Проверяем существует ли старый столбец work_days
+	// Проверяем есть ли проблемный столбец work_days (integer[])
 	var workDaysColumnExists bool
 	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days')").Scan(&workDaysColumnExists).Error
 	if err != nil {
 		return fmt.Errorf("failed to check work_days column: %w", err)
 	}
 
-	// Проверяем существует ли новый столбец work_days_json
+	// Проверяем есть ли правильный столбец work_days_json
 	var workDaysJsonColumnExists bool
 	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days_json')").Scan(&workDaysJsonColumnExists).Error
 	if err != nil {
 		return fmt.Errorf("failed to check work_days_json column: %w", err)
 	}
 
-	if workDaysColumnExists && !workDaysJsonColumnExists {
-		log.Println("🔄 Recreating doctor_schedules table with correct structure...")
+	if workDaysColumnExists {
+		log.Println("⚠️  CRITICAL: Found old work_days column (integer[]) in doctor_schedules table")
+		log.Println("⚠️  This column conflicts with the new structure and must be removed")
+		log.Println("⚠️  Please run the following SQL commands manually to fix this:")
+		log.Println("⚠️  ")
+		log.Println("⚠️  docker exec -it vitalem_postgres psql -U vitalem_user -d vitalem_db")
+		log.Println("⚠️  ")
+		log.Println("⚠️  -- If you want to preserve data:")
+		log.Println("⚠️  ALTER TABLE doctor_schedules ADD COLUMN work_days_json TEXT;")
+		log.Println("⚠️  UPDATE doctor_schedules SET work_days_json = (SELECT json_agg(unnest)::text FROM unnest(work_days)) WHERE work_days IS NOT NULL;")
+		log.Println("⚠️  UPDATE doctor_schedules SET work_days_json = '[]' WHERE work_days_json IS NULL;")
+		log.Println("⚠️  ALTER TABLE doctor_schedules ALTER COLUMN work_days_json SET NOT NULL;")
+		log.Println("⚠️  ALTER TABLE doctor_schedules DROP COLUMN work_days;")
+		log.Println("⚠️  ")
+		log.Println("⚠️  -- Or if you want to recreate the table from scratch:")
+		log.Println("⚠️  DROP TABLE doctor_schedules CASCADE;")
+		log.Println("⚠️  ")
 
-		// Сохраняем данные во временную таблицу
-		err = db.Exec(`
-			CREATE TABLE doctor_schedules_backup AS 
-			SELECT 
-				id, 
-				doctor_id, 
-				name, 
-				(SELECT json_agg(unnest)::text FROM unnest(work_days)) as work_days_json,
-				start_time, 
-				end_time, 
-				break_start, 
-				break_end, 
-				slot_duration, 
-				slot_title, 
-				is_active, 
-				is_default, 
-				created_at, 
-				updated_at 
-			FROM doctor_schedules
-		`).Error
-		if err != nil {
-			return fmt.Errorf("failed to backup data: %w", err)
-		}
+		return fmt.Errorf("table doctor_schedules contains incompatible work_days column - manual intervention required")
+	}
 
-		// Удаляем старую таблицу
-		err = db.Exec("DROP TABLE doctor_schedules").Error
-		if err != nil {
-			return fmt.Errorf("failed to drop old table: %w", err)
-		}
-
-		// Создаем новую таблицу с правильной структурой
-		err = db.Exec(`
-			CREATE TABLE doctor_schedules (
-				id UUID PRIMARY KEY,
-				doctor_id UUID NOT NULL,
-				name VARCHAR(255) NOT NULL,
-				work_days_json TEXT NOT NULL,
-				start_time VARCHAR(5) NOT NULL,
-				end_time VARCHAR(5) NOT NULL,
-				break_start VARCHAR(5),
-				break_end VARCHAR(5),
-				slot_duration INTEGER NOT NULL DEFAULT 30,
-				slot_title VARCHAR(255),
-				is_active BOOLEAN DEFAULT true,
-				is_default BOOLEAN DEFAULT false,
-				created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-				updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
-			)
-		`).Error
-		if err != nil {
-			return fmt.Errorf("failed to create new table: %w", err)
-		}
-
-		// Восстанавливаем данные
-		err = db.Exec(`
-			INSERT INTO doctor_schedules 
-			SELECT * FROM doctor_schedules_backup
-		`).Error
-		if err != nil {
-			return fmt.Errorf("failed to restore data: %w", err)
-		}
-
-		// Удаляем временную таблицу
-		err = db.Exec("DROP TABLE doctor_schedules_backup").Error
-		if err != nil {
-			log.Printf("⚠️ Failed to drop backup table: %v", err)
-		}
-
-		// Создаем индекс
-		err = db.Exec("CREATE INDEX IF NOT EXISTS idx_schedules_doctor_active ON doctor_schedules(doctor_id, is_active)").Error
-		if err != nil {
-			log.Printf("⚠️ Failed to create index: %v", err)
-		}
-
-		log.Println("✅ Successfully recreated doctor_schedules table with work_days_json")
-	} else if workDaysJsonColumnExists && !workDaysColumnExists {
-		log.Println("📝 Migration already completed - work_days_json column exists")
-	} else if !workDaysColumnExists && !workDaysJsonColumnExists {
-		log.Println("📝 Fresh installation - no migration needed")
+	if !workDaysJsonColumnExists {
+		log.Println("📝 Table structure looks compatible, work_days_json will be created by AutoMigrate")
+	} else {
+		log.Println("✅ Table structure is correct, work_days_json column exists")
 	}
 
 	return nil
