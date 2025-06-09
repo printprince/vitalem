@@ -1,42 +1,12 @@
 package models
 
 import (
-	"database/sql/driver"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
-
-// IntArray represents a slice of integers for JSON storage
-type IntArray []int
-
-// Scan implements the Scanner interface for database/sql
-func (ia *IntArray) Scan(value interface{}) error {
-	if value == nil {
-		*ia = nil
-		return nil
-	}
-
-	switch v := value.(type) {
-	case []byte:
-		return json.Unmarshal(v, ia)
-	case string:
-		return json.Unmarshal([]byte(v), ia)
-	default:
-		return fmt.Errorf("cannot scan %T into IntArray", value)
-	}
-}
-
-// Value implements the driver Valuer interface
-func (ia IntArray) Value() (driver.Value, error) {
-	if ia == nil {
-		return nil, nil
-	}
-	return json.Marshal(ia)
-}
 
 // DoctorSchedule - расписание работы врача
 type DoctorSchedule struct {
@@ -44,8 +14,8 @@ type DoctorSchedule struct {
 	DoctorID uuid.UUID `gorm:"type:uuid;not null;index" json:"doctor_id"`
 	Name     string    `gorm:"type:varchar(255);not null" json:"name"` // "Основное расписание"
 
-	// Дни недели: [1,2,3,4,5] = Пн-Пт
-	WorkDays IntArray `gorm:"type:jsonb" json:"work_days"`
+	// Дни недели как JSON строка: "[1,2,3,4,5]" = Пн-Пт
+	WorkDaysJSON string `gorm:"type:text;not null" json:"-"`
 
 	// Время работы
 	StartTime string `gorm:"type:varchar(5);not null" json:"start_time"` // "09:00"
@@ -63,6 +33,22 @@ type DoctorSchedule struct {
 
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// WorkDays возвращает дни недели как слайс int
+func (s *DoctorSchedule) WorkDays() []int {
+	var days []int
+	if s.WorkDaysJSON != "" {
+		json.Unmarshal([]byte(s.WorkDaysJSON), &days)
+	}
+	return days
+}
+
+// SetWorkDays устанавливает дни недели из слайса int
+func (s *DoctorSchedule) SetWorkDays(days []int) {
+	if data, err := json.Marshal(days); err == nil {
+		s.WorkDaysJSON = string(data)
+	}
 }
 
 func (DoctorSchedule) TableName() string {

@@ -100,7 +100,6 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 	schedule := &models.DoctorSchedule{
 		DoctorID:     doctorID,
 		Name:         req.Name,
-		WorkDays:     models.IntArray(req.WorkDays),
 		StartTime:    req.StartTime,
 		EndTime:      req.EndTime,
 		BreakStart:   req.BreakStart,
@@ -110,6 +109,9 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 		IsActive:     true,
 		IsDefault:    req.IsDefault,
 	}
+
+	// Устанавливаем рабочие дни через новый метод
+	schedule.SetWorkDays(req.WorkDays)
 
 	if err := s.repo.CreateSchedule(schedule); err != nil {
 		s.logError("Failed to create schedule in repository", map[string]interface{}{
@@ -153,7 +155,7 @@ func (s *appointmentService) checkScheduleConflicts(doctorID uuid.UUID, req *mod
 		existingEnd, _ := time.Parse("15:04", existing.EndTime)
 
 		// Проверяем пересечение рабочих дней
-		if s.hasWorkDayConflict(req.WorkDays, existing.WorkDays) {
+		if s.hasWorkDayConflict(req.WorkDays, existing.WorkDays()) {
 			// Проверяем пересечение времени
 			if s.hasTimeConflict(startTime, endTime, existingStart, existingEnd) {
 				return fmt.Errorf("schedule conflicts with existing schedule '%s' on overlapping work days and times", existing.Name)
@@ -337,7 +339,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 
 		// Проверяем рабочие дни
 		isWorkDay := false
-		for _, workDay := range schedule.WorkDays {
+		for _, workDay := range schedule.WorkDays() {
 			if workDay == weekday {
 				isWorkDay = true
 				break
@@ -640,7 +642,7 @@ func (s *appointmentService) scheduleToResponse(schedule *models.DoctorSchedule)
 		ID:           schedule.ID,
 		DoctorID:     schedule.DoctorID,
 		Name:         schedule.Name,
-		WorkDays:     []int(schedule.WorkDays),
+		WorkDays:     schedule.WorkDays(),
 		StartTime:    schedule.StartTime,
 		EndTime:      schedule.EndTime,
 		BreakStart:   schedule.BreakStart,
@@ -704,7 +706,7 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 		schedule.Name = *req.Name
 	}
 	if req.WorkDays != nil {
-		schedule.WorkDays = models.IntArray(*req.WorkDays)
+		schedule.SetWorkDays(*req.WorkDays)
 	}
 	if req.StartTime != nil {
 		schedule.StartTime = *req.StartTime
@@ -741,7 +743,7 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 	// Проверяем конфликты если расписание активно и изменились критичные поля
 	if schedule.IsActive {
 		timeChanged := originalSchedule.StartTime != schedule.StartTime || originalSchedule.EndTime != schedule.EndTime
-		daysChanged := !s.workDaysEqual(originalSchedule.WorkDays, schedule.WorkDays)
+		daysChanged := !s.workDaysEqual(originalSchedule.WorkDays(), schedule.WorkDays())
 
 		if timeChanged || daysChanged {
 			s.logInfo("Checking conflicts after schedule update", map[string]interface{}{
@@ -899,7 +901,7 @@ func (s *appointmentService) checkScheduleConflictsForExisting(doctorID uuid.UUI
 		existingEnd, _ := time.Parse("15:04", existing.EndTime)
 
 		// Проверяем пересечение рабочих дней
-		if s.hasWorkDayConflict(schedule.WorkDays, existing.WorkDays) {
+		if s.hasWorkDayConflict(schedule.WorkDays(), existing.WorkDays()) {
 			// Проверяем пересечение времени
 			if s.hasTimeConflict(startTime, endTime, existingStart, existingEnd) {
 				return fmt.Errorf("schedule conflicts with active schedule '%s' on overlapping work days and times", existing.Name)
