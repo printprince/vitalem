@@ -66,8 +66,6 @@ type GenerateSlotsRequest struct {
 // GenerateSlotsResponse - ответ генерации слотов
 type GenerateSlotsResponse struct {
 	SlotsCreated int    `json:"slots_created"`
-	SlotsSkipped int    `json:"slots_skipped"`
-	TotalSlots   int    `json:"total_slots"`
 	Message      string `json:"message"`
 }
 

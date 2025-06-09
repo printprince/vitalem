@@ -314,10 +314,9 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 		"exceptionCount": len(exceptions),
 	})
 
-	totalSlotsCreated := 0
-	totalSlotsSkipped := 0
+	// Шаг 1: Собираем ВСЕ потенциальные слоты, которые нужно создать
+	var allSlotsToCreate []slotToCreate
 
-	// Генерируем слоты
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
 		dateStr := date.Format("2006-01-02")
 		weekday := int(date.Weekday())
@@ -337,9 +336,8 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			}
 			// Для кастомных часов используем их вместо обычного расписания
 			if exception.Type == "custom_hours" && exception.CustomStartTime != nil && exception.CustomEndTime != nil {
-				created, skipped := s.generateSlotsForDay(date, *exception.CustomStartTime, *exception.CustomEndTime, nil, nil, schedule)
-				totalSlotsCreated += created
-				totalSlotsSkipped += skipped
+				daySlots := s.generateSlotsForDayCheck(date, *exception.CustomStartTime, *exception.CustomEndTime, nil, nil, schedule)
+				allSlotsToCreate = append(allSlotsToCreate, daySlots...)
 				continue
 			}
 		}
@@ -357,39 +355,83 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			continue
 		}
 
-		// Генерируем слоты для обычного дня
-		created, skipped := s.generateSlotsForDay(date, schedule.StartTime, schedule.EndTime, schedule.BreakStart, schedule.BreakEnd, schedule)
-		totalSlotsCreated += created
-		totalSlotsSkipped += skipped
+		// Собираем слоты для обычного дня
+		daySlots := s.generateSlotsForDayCheck(date, schedule.StartTime, schedule.EndTime, schedule.BreakStart, schedule.BreakEnd, schedule)
+		allSlotsToCreate = append(allSlotsToCreate, daySlots...)
 	}
 
-	s.logInfo("Slot generation completed", map[string]interface{}{
+	// Шаг 2: Проверяем ВСЕ слоты на конфликты
+	s.logInfo("Checking all slots for conflicts", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"totalSlots": len(allSlotsToCreate),
+	})
+
+	for _, slot := range allSlotsToCreate {
+		if s.slotExists(schedule.DoctorID, slot.startTime, slot.endTime) {
+			s.logError("Slot conflict detected - aborting generation", map[string]interface{}{
+				"doctorID":      doctorID.String(),
+				"conflictStart": slot.startTime.Format("2006-01-02 15:04:05"),
+				"conflictEnd":   slot.endTime.Format("2006-01-02 15:04:05"),
+			})
+			return nil, fmt.Errorf("cannot generate slots: slot from %s to %s already exists. Please choose a different time period or delete existing slots first",
+				slot.startTime.Format("2006-01-02 15:04"), slot.endTime.Format("15:04"))
+		}
+	}
+
+	// Шаг 3: Если все проверки прошли - создаем ВСЕ слоты
+	s.logInfo("No conflicts found - creating all slots", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"totalSlots": len(allSlotsToCreate),
+	})
+
+	totalSlotsCreated := 0
+	for _, slot := range allSlotsToCreate {
+		appointment := &models.Appointment{
+			StartTime:  slot.startTime,
+			EndTime:    slot.endTime,
+			DoctorID:   schedule.DoctorID,
+			Title:      schedule.SlotTitle,
+			Status:     "available",
+			ScheduleID: &schedule.ID,
+		}
+
+		if err := s.repo.CreateAppointment(appointment); err != nil {
+			s.logError("Failed to create appointment slot", map[string]interface{}{
+				"doctorID":  schedule.DoctorID.String(),
+				"startTime": slot.startTime.Format("2006-01-02 15:04:05"),
+				"endTime":   slot.endTime.Format("2006-01-02 15:04:05"),
+				"error":     err.Error(),
+			})
+			return nil, fmt.Errorf("failed to create slot: %w", err)
+		} else {
+			totalSlotsCreated++
+		}
+	}
+
+	s.logInfo("Slot generation completed successfully", map[string]interface{}{
 		"doctorID":          doctorID.String(),
 		"scheduleID":        scheduleID.String(),
 		"totalSlotsCreated": totalSlotsCreated,
-		"totalSlotsSkipped": totalSlotsSkipped,
 	})
 
-	totalSlots := totalSlotsCreated + totalSlotsSkipped
-	var message string
-	if totalSlotsSkipped > 0 {
-		message = fmt.Sprintf("Генерация завершена: создано %d новых слотов, пропущено %d существующих слотов", totalSlotsCreated, totalSlotsSkipped)
-	} else {
-		message = fmt.Sprintf("Генерация завершена: создано %d новых слотов", totalSlotsCreated)
-	}
+	message := fmt.Sprintf("Генерация завершена успешно: создано %d слотов", totalSlotsCreated)
 
 	return &models.GenerateSlotsResponse{
 		SlotsCreated: totalSlotsCreated,
-		SlotsSkipped: totalSlotsSkipped,
-		TotalSlots:   totalSlots,
 		Message:      message,
 	}, nil
 }
 
-func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endTime string, breakStart, breakEnd *string, schedule *models.DoctorSchedule) (int, int) {
+// Структура для хранения информации о слоте, который нужно создать
+type slotToCreate struct {
+	startTime time.Time
+	endTime   time.Time
+}
+
+// generateSlotsForDayCheck - собирает слоты для дня без создания
+func (s *appointmentService) generateSlotsForDayCheck(date time.Time, startTime, endTime string, breakStart, breakEnd *string, schedule *models.DoctorSchedule) []slotToCreate {
 	location := time.Local
-	slotsCreated := 0
-	slotsSkipped := 0
+	var slots []slotToCreate
 
 	// Парсим время начала и конца
 	start, err := time.ParseInLocation("2006-01-02 15:04", date.Format("2006-01-02")+" "+startTime, location)
@@ -400,7 +442,7 @@ func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endT
 			"startTime": startTime,
 			"error":     err.Error(),
 		})
-		return slotsCreated, slotsSkipped
+		return slots
 	}
 
 	end, err := time.ParseInLocation("2006-01-02 15:04", date.Format("2006-01-02")+" "+endTime, location)
@@ -411,7 +453,7 @@ func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endT
 			"endTime":  endTime,
 			"error":    err.Error(),
 		})
-		return slotsCreated, slotsSkipped
+		return slots
 	}
 
 	// Парсим перерыв, если есть
@@ -444,43 +486,15 @@ func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endT
 			}
 		}
 
-		// ПРОСТАЯ проверка: есть ли уже слот в это время
-		if s.slotExists(schedule.DoctorID, current, slotEnd) {
-			s.logInfo("Slot already exists, skipping", map[string]interface{}{
-				"doctorID":  schedule.DoctorID.String(),
-				"startTime": current.Format("2006-01-02 15:04:05"),
-				"endTime":   slotEnd.Format("2006-01-02 15:04:05"),
-			})
-			slotsSkipped++
-			current = slotEnd
-			continue
-		}
-
-		// Создаем слот
-		appointment := &models.Appointment{
-			StartTime:  current,
-			EndTime:    slotEnd,
-			DoctorID:   schedule.DoctorID,
-			Title:      schedule.SlotTitle,
-			Status:     "available",
-			ScheduleID: &schedule.ID,
-		}
-
-		if err := s.repo.CreateAppointment(appointment); err != nil {
-			s.logError("Failed to create appointment slot", map[string]interface{}{
-				"doctorID":  schedule.DoctorID.String(),
-				"startTime": current.Format("2006-01-02 15:04:05"),
-				"endTime":   slotEnd.Format("2006-01-02 15:04:05"),
-				"error":     err.Error(),
-			})
-		} else {
-			slotsCreated++
-		}
+		slots = append(slots, slotToCreate{
+			startTime: current,
+			endTime:   slotEnd,
+		})
 
 		current = slotEnd
 	}
 
-	return slotsCreated, slotsSkipped
+	return slots
 }
 
 // slotExists простая проверка существования слота
