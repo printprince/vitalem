@@ -26,7 +26,7 @@ type DoctorSchedule struct {
 	BreakEnd   *string `gorm:"type:varchar(5)" json:"break_end,omitempty"`   // "13:00"
 
 	// Настройки слотов
-	SlotDuration int    `gorm:"not null;default:30" json:"slot_duration"` // 30 минут
+	SlotDuration int64  `gorm:"not null;default:30" json:"slot_duration"` // 30 минут
 	SlotTitle    string `gorm:"type:varchar(255)" json:"slot_title"`      // "Консультация"
 	IsActive     bool   `gorm:"default:true" json:"is_active"`            // Активно ли расписание
 	IsDefault    bool   `gorm:"default:false" json:"is_default"`          // Основное расписание

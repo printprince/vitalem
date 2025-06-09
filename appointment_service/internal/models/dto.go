@@ -16,7 +16,7 @@ type CreateScheduleRequest struct {
 	EndTime      string  `json:"end_time" validate:"required,len=5"`                         // "18:00"
 	BreakStart   *string `json:"break_start,omitempty" validate:"omitempty,len=5"`           // "12:00"
 	BreakEnd     *string `json:"break_end,omitempty" validate:"omitempty,len=5"`             // "13:00"
-	SlotDuration int     `json:"slot_duration" validate:"required,min=15,max=180"`           // 30
+	SlotDuration int64   `json:"slot_duration" validate:"required,min=15,max=180"`           // 30
 	SlotTitle    string  `json:"slot_title" validate:"max=255"`                              // "Консультация"
 	IsDefault    bool    `json:"is_default"`                                                 // Основное расписание
 }
@@ -31,7 +31,7 @@ type ScheduleResponse struct {
 	EndTime      string    `json:"end_time"`
 	BreakStart   *string   `json:"break_start,omitempty"`
 	BreakEnd     *string   `json:"break_end,omitempty"`
-	SlotDuration int       `json:"slot_duration"`
+	SlotDuration int64     `json:"slot_duration"`
 	SlotTitle    string    `json:"slot_title"`
 	IsActive     bool      `json:"is_active"`
 	IsDefault    bool      `json:"is_default"`
@@ -47,7 +47,7 @@ type UpdateScheduleRequest struct {
 	EndTime      *string `json:"end_time,omitempty" validate:"omitempty,len=5"`
 	BreakStart   *string `json:"break_start,omitempty" validate:"omitempty,len=5"`
 	BreakEnd     *string `json:"break_end,omitempty" validate:"omitempty,len=5"`
-	SlotDuration *int    `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
+	SlotDuration *int64  `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
 	SlotTitle    *string `json:"slot_title,omitempty" validate:"omitempty,max=255"`
 	IsDefault    *bool   `json:"is_default,omitempty"`
 }
