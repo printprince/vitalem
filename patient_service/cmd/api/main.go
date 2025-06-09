@@ -101,8 +101,8 @@ func main() {
 	messageService, err := service.NewMessageService(
 		rabbitMQURL,
 		cfg.RabbitMQ.Exchange,
-		cfg.RabbitMQ.PatientQueue,
-		cfg.RabbitMQ.UserQueue,
+		cfg.RabbitMQ.PatientQueueName,
+		cfg.RabbitMQ.UserQueueName,
 		cfg.RabbitMQ.RoutingKey,
 		loggerClient,
 	)
@@ -115,10 +115,23 @@ func main() {
 		log.Printf("Ошибка инициализации сервиса сообщений: %v", err)
 	} else {
 		defer messageService.Close()
+		if loggerClient != nil {
+			loggerClient.Info("MessageService успешно инициализирован", map[string]interface{}{
+				"exchange":      cfg.RabbitMQ.Exchange,
+				"userQueueName": cfg.RabbitMQ.UserQueueName,
+				"routingKey":    cfg.RabbitMQ.RoutingKey,
+			})
+		}
+		log.Printf("MessageService успешно инициализирован")
 	}
 
 	// Запуск потребителя сообщений о создании пользователей
 	if messageService != nil {
+		if loggerClient != nil {
+			loggerClient.Info("Запуск consumer для user created events", nil)
+		}
+		log.Printf("Запуск consumer для user created events")
+
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
@@ -129,10 +142,25 @@ func main() {
 					"error": err.Error(),
 				})
 			}
+			log.Printf("Ошибка подписки на события создания пользователей: %v", err)
 		} else {
+			if loggerClient != nil {
+				loggerClient.Info("Consumer успешно запущен", nil)
+			}
+			log.Printf("Consumer успешно запущен")
+
 			// Обработка сообщений о создании пользователей через eventService
 			go func() {
 				for event := range userEvents {
+					if loggerClient != nil {
+						loggerClient.Info("Получено событие создания пользователя", map[string]interface{}{
+							"userID": event.UserID,
+							"email":  event.Email,
+							"role":   event.Role,
+						})
+					}
+					log.Printf("Получено событие создания пользователя: %s, %s, %s", event.UserID, event.Email, event.Role)
+
 					if err := eventService.ProcessUserCreatedEvent(context.Background(), event); err != nil {
 						if loggerClient != nil {
 							loggerClient.Error("Ошибка обработки события", map[string]interface{}{
@@ -140,10 +168,16 @@ func main() {
 								"userID": event.UserID,
 							})
 						}
+						log.Printf("Ошибка обработки события: %v", err)
 					}
 				}
 			}()
 		}
+	} else {
+		if loggerClient != nil {
+			loggerClient.Error("MessageService равен nil, consumer не будет запущен", nil)
+		}
+		log.Printf("MessageService равен nil, consumer не будет запущен")
 	}
 
 	// 3. HTTP обработчики
