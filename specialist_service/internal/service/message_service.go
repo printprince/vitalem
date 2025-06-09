@@ -109,6 +109,12 @@ func (s *messageService) PublishDoctorCreated(ctx context.Context, event *models
 }
 
 func (s *messageService) ConsumeUserCreated(ctx context.Context) (<-chan models.UserCreatedEvent, error) {
+	s.logger.Info("=== STARTING ConsumeUserCreated ===", map[string]interface{}{
+		"queue":      s.userQueueName,
+		"routingKey": s.routingKey,
+		"exchange":   s.exchange,
+	})
+
 	msgs, err := s.channel.Consume(
 		s.userQueueName, // queue
 		"",              // consumer
@@ -135,15 +141,31 @@ func (s *messageService) ConsumeUserCreated(ctx context.Context) (<-chan models.
 
 	go func() {
 		defer close(events)
+		s.logger.Info("=== CONSUMER GOROUTINE STARTED ===", nil)
 
 		for d := range msgs {
+			s.logger.Info("=== RAW MESSAGE RECEIVED ===", map[string]interface{}{
+				"body":         string(d.Body),
+				"routing_key":  d.RoutingKey,
+				"exchange":     d.Exchange,
+				"content_type": d.ContentType,
+				"headers":      d.Headers,
+			})
+
 			var event models.UserCreatedEvent
 			if err := json.Unmarshal(d.Body, &event); err != nil {
 				s.logger.Error("Failed to unmarshal user created event", map[string]interface{}{
-					"error": err.Error(),
+					"error":    err.Error(),
+					"raw_body": string(d.Body),
 				})
 				continue
 			}
+
+			s.logger.Info("Successfully unmarshaled event", map[string]interface{}{
+				"userID": event.UserID,
+				"email":  event.Email,
+				"role":   event.Role,
+			})
 
 			s.logger.Info("Received user created event", map[string]interface{}{
 				"userID": event.UserID,
@@ -151,12 +173,21 @@ func (s *messageService) ConsumeUserCreated(ctx context.Context) (<-chan models.
 				"role":   event.Role,
 			})
 
+			s.logger.Info("Sending event to channel", map[string]interface{}{
+				"userID": event.UserID,
+			})
+
 			select {
 			case events <- event:
+				s.logger.Info("Event sent to channel successfully", map[string]interface{}{
+					"userID": event.UserID,
+				})
 			case <-ctx.Done():
+				s.logger.Info("Context cancelled, stopping consumer", nil)
 				return
 			}
 		}
+		s.logger.Info("=== CONSUMER GOROUTINE ENDED ===", nil)
 	}()
 
 	return events, nil
