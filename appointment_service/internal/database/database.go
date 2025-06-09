@@ -43,9 +43,9 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("failed to check/fix schedule table: %w", err)
 	}
 
-	// Автоматическая миграция моделей
+	// Автоматическая миграция ТОЛЬКО для таблиц без конфликтов
+	// DoctorSchedule исключена из-за конфликтов схемы
 	err := db.AutoMigrate(
-		&models.DoctorSchedule{},
 		&models.ScheduleException{},
 		&models.Appointment{},
 	)
@@ -54,6 +54,7 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	log.Println("✅ Database migrations completed successfully")
+	log.Println("📝 NOTE: doctor_schedules table is managed manually to avoid schema conflicts")
 	return nil
 }
 
