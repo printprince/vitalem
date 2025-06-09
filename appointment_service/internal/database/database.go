@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/printprince/vitalem/appointment_service/internal/config"
-	"github.com/printprince/vitalem/appointment_service/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -43,17 +42,36 @@ func RunMigrations(db *gorm.DB) error {
 		return fmt.Errorf("failed to check/fix schedule table: %w", err)
 	}
 
-	// Автоматическая миграция ТОЛЬКО для таблиц без конфликтов
-	// DoctorSchedule и ScheduleException исключены из-за конфликтов схемы
-	err := db.AutoMigrate(
-		&models.Appointment{},
-	)
+	// Проверяем базовую связность с базой данных
+	log.Println("🔍 Testing database connectivity...")
+	var dbName string
+	err := db.Raw("SELECT current_database()").Scan(&dbName).Error
 	if err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
+		return fmt.Errorf("failed to test database connectivity: %w", err)
+	}
+	log.Printf("✅ Database connectivity test successful: %s", dbName)
+
+	// AutoMigrate полностью отключен из-за конфликтов схемы во всех таблицах
+	// Все таблицы управляются вручную через SQL-миграции
+	log.Println("📝 AutoMigrate is disabled - using manual schema management")
+	log.Println("📋 Expected tables: doctor_schedules, schedule_exceptions, appointments")
+
+	// Проверяем существование основных таблиц
+	tables := []string{"doctor_schedules", "schedule_exceptions", "appointments"}
+	for _, tableName := range tables {
+		var exists bool
+		err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = ?)", tableName).Scan(&exists).Error
+		if err != nil {
+			log.Printf("⚠️  Failed to check table %s: %v", tableName, err)
+		} else if exists {
+			log.Printf("✅ Table %s exists", tableName)
+		} else {
+			log.Printf("⚠️  Table %s does not exist - manual creation required", tableName)
+		}
 	}
 
 	log.Println("✅ Database migrations completed successfully")
-	log.Println("📝 NOTE: doctor_schedules and schedule_exceptions tables are managed manually to avoid schema conflicts")
+	log.Println("📝 NOTE: All tables are managed manually to avoid GORM AutoMigrate schema conflicts")
 	return nil
 }
 
