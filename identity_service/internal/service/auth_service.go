@@ -105,6 +105,14 @@ func (s *AuthService) Register(email, password, role string) error {
 	// Если у нас есть сервис сообщений, отправляем событие создания пользователя
 	// Это триггерит создание записей в других сервисах (профили пациента/врача)
 	if s.messageService != nil {
+		if s.logger != nil {
+			s.logger.Info("Отправляем событие создания пользователя", map[string]interface{}{
+				"userID": user.ID.String(),
+				"email":  user.Email,
+				"role":   user.Role,
+			})
+		}
+
 		// Создаем событие с указателем на структуру, как требует интерфейс
 		event := &models.UserCreatedEvent{
 			UserID: user.ID.String(),
@@ -127,6 +135,22 @@ func (s *AuthService) Register(email, password, role string) error {
 			}
 			// Не возвращаем ошибку, т.к. пользователь уже создан
 			// В худшем случае профиль придется создать вручную
+		} else {
+			if s.logger != nil {
+				s.logger.Info("Событие создания пользователя успешно отправлено", map[string]interface{}{
+					"userID": user.ID.String(),
+					"email":  user.Email,
+					"role":   user.Role,
+				})
+			}
+		}
+	} else {
+		if s.logger != nil {
+			s.logger.Warn("MessageService не установлен, событие не отправлено", map[string]interface{}{
+				"userID": user.ID.String(),
+				"email":  user.Email,
+				"role":   user.Role,
+			})
 		}
 	}
 
