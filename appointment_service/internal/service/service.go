@@ -848,6 +848,27 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
+	// Детальное логирование для отладки
+	s.logInfo("ToggleSchedule request received", map[string]interface{}{
+		"doctorID":          doctorID.String(),
+		"scheduleID":        scheduleID.String(),
+		"scheduleName":      schedule.Name,
+		"currentIsActive":   schedule.IsActive,
+		"currentIsDefault":  schedule.IsDefault,
+		"requestedIsActive": req.IsActive,
+		"actionType": func() string {
+			if req.IsActive && !schedule.IsActive {
+				return "ACTIVATING"
+			} else if !req.IsActive && schedule.IsActive {
+				return "DEACTIVATING"
+			} else if req.IsActive && schedule.IsActive {
+				return "ALREADY_ACTIVE"
+			} else {
+				return "ALREADY_INACTIVE"
+			}
+		}(),
+	})
+
 	// Если активируем расписание - деактивируем все остальные
 	if req.IsActive && !schedule.IsActive {
 		s.logInfo("Activating schedule - deactivating all other schedules", map[string]interface{}{
@@ -882,10 +903,17 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 	}
 
 	s.logInfo("Schedule toggled successfully", map[string]interface{}{
-		"doctorID":   doctorID.String(),
-		"scheduleID": scheduleID.String(),
-		"isActive":   req.IsActive,
-		"isDefault":  schedule.IsDefault,
+		"doctorID":       doctorID.String(),
+		"scheduleID":     scheduleID.String(),
+		"finalIsActive":  schedule.IsActive,
+		"finalIsDefault": schedule.IsDefault,
+		"operation": func() string {
+			if schedule.IsActive {
+				return "ACTIVATED"
+			} else {
+				return "DEACTIVATED"
+			}
+		}(),
 	})
 
 	return s.scheduleToResponse(schedule), nil
