@@ -101,8 +101,8 @@ func main() {
 	messageService, err := service.NewMessageService(
 		rabbitMQURL,
 		cfg.RabbitMQ.Exchange,
-		cfg.RabbitMQ.PatientQueueName,
-		cfg.RabbitMQ.UserQueueName,
+		cfg.RabbitMQ.PatientQueue,
+		cfg.RabbitMQ.UserQueue,
 		cfg.RabbitMQ.RoutingKey,
 		loggerClient,
 	)
@@ -118,7 +118,7 @@ func main() {
 		if loggerClient != nil {
 			loggerClient.Info("MessageService успешно инициализирован", map[string]interface{}{
 				"exchange":      cfg.RabbitMQ.Exchange,
-				"userQueueName": cfg.RabbitMQ.UserQueueName,
+				"userQueueName": cfg.RabbitMQ.UserQueue,
 				"routingKey":    cfg.RabbitMQ.RoutingKey,
 			})
 		}
