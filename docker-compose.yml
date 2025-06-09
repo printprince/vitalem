@@ -170,6 +170,8 @@ services:
       - RMQ_USER=guest
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
+      - RMQ_USER_QUEUE=user.created.queue
+      - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
       - LOG_LEVEL=info
@@ -206,6 +208,9 @@ services:
       - RMQ_USER=guest
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
+      - RMQ_DOCTOR_QUEUE=doctor.events
+      - RMQ_USER_QUEUE=user.events
+      - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
       - LOG_LEVEL=info
@@ -244,6 +249,9 @@ services:
       - RMQ_USER=guest
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
+      - RMQ_PATIENT_QUEUE=patient.events
+      - RMQ_USER_QUEUE=user.events
+      - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
       - LOG_LEVEL=info
