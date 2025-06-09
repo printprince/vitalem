@@ -539,8 +539,16 @@ func (h *AppointmentHandler) BookAppointment(c echo.Context) error {
 	})
 }
 
-// CancelAppointment - POST /api/appointments/:id/cancel
+// CancelAppointment - POST /api/patient/appointments/:id/cancel
 func (h *AppointmentHandler) CancelAppointment(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
 	appointmentID, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, models.APIResponse{
@@ -549,7 +557,7 @@ func (h *AppointmentHandler) CancelAppointment(c echo.Context) error {
 		})
 	}
 
-	if err := h.service.CancelAppointment(appointmentID); err != nil {
+	if err := h.service.CancelAppointment(userID, appointmentID); err != nil {
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Error:   err.Error(),

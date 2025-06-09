@@ -25,7 +25,7 @@ type AppointmentService interface {
 	// Appointments
 	GetAvailableSlots(doctorID uuid.UUID, date string) ([]*models.AvailableSlot, error)
 	BookAppointment(patientID, appointmentID uuid.UUID, req *models.BookAppointmentRequest) (*models.AppointmentResponse, error)
-	CancelAppointment(appointmentID uuid.UUID) error
+	CancelAppointment(patientID, appointmentID uuid.UUID) error
 	GetDoctorAppointments(doctorID uuid.UUID, date string) ([]*models.AppointmentResponse, error)
 	GetPatientAppointments(patientID uuid.UUID, date string) ([]*models.AppointmentResponse, error)
 
@@ -592,10 +592,20 @@ func (s *appointmentService) isAppointmentTypeCompatible(slotType, requestedType
 	return slotType == requestedType
 }
 
-func (s *appointmentService) CancelAppointment(appointmentID uuid.UUID) error {
+func (s *appointmentService) CancelAppointment(patientID, appointmentID uuid.UUID) error {
 	appointment, err := s.repo.GetAppointmentByID(appointmentID)
 	if err != nil {
 		return fmt.Errorf("appointment not found: %w", err)
+	}
+
+	// Проверяем что запись принадлежит этому пациенту
+	if appointment.PatientID == nil || *appointment.PatientID != patientID {
+		return errors.New("appointment doesn't belong to this patient or is not booked")
+	}
+
+	// Проверяем что запись можно отменить (не уже отменена и не завершена)
+	if appointment.Status != "booked" {
+		return fmt.Errorf("cannot cancel appointment with status '%s'", appointment.Status)
 	}
 
 	appointment.Cancel()
@@ -790,6 +800,9 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 		schedule.AppointmentFormat = *req.AppointmentFormat
 	}
 
+	// Проверяем изменение типа записи для обновления слотов
+	appointmentFormatChanged := req.AppointmentFormat != nil && originalSchedule.AppointmentFormat != schedule.AppointmentFormat
+
 	// Проверяем конфликты если расписание активно и изменились критичные поля
 	if schedule.IsActive {
 		timeChanged := originalSchedule.StartTime != schedule.StartTime || originalSchedule.EndTime != schedule.EndTime
@@ -816,6 +829,33 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 
 	if err := s.repo.UpdateSchedule(schedule); err != nil {
 		return nil, fmt.Errorf("failed to update schedule: %w", err)
+	}
+
+	// Если изменился формат записи - обновляем все доступные слоты
+	if appointmentFormatChanged {
+		s.logInfo("Appointment format changed - updating available slots", map[string]interface{}{
+			"doctorID":             doctorID.String(),
+			"scheduleID":           scheduleID.String(),
+			"oldAppointmentFormat": originalSchedule.AppointmentFormat,
+			"newAppointmentFormat": schedule.AppointmentFormat,
+		})
+
+		if err := s.repo.UpdateScheduleAppointmentType(scheduleID, schedule.AppointmentFormat); err != nil {
+			s.logError("Failed to update appointment type in slots", map[string]interface{}{
+				"doctorID":             doctorID.String(),
+				"scheduleID":           scheduleID.String(),
+				"newAppointmentFormat": schedule.AppointmentFormat,
+				"error":                err.Error(),
+			})
+			// Возвращаем ошибку, но расписание уже сохранено - это важно отметить
+			return nil, fmt.Errorf("schedule updated but failed to update slots appointment type: %w", err)
+		}
+
+		s.logInfo("Available slots appointment type updated successfully", map[string]interface{}{
+			"doctorID":             doctorID.String(),
+			"scheduleID":           scheduleID.String(),
+			"newAppointmentFormat": schedule.AppointmentFormat,
+		})
 	}
 
 	return s.scheduleToResponse(schedule), nil

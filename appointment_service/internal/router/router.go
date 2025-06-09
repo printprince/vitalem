@@ -53,6 +53,9 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 	{
 		// Patient's appointments - пациент видит свои записи
 		patient.GET("/appointments", handler.GetPatientAppointments)
+
+		// Patient can cancel their own appointments
+		patient.POST("/appointments/:id/cancel", handler.CancelAppointment)
 	}
 
 	// Public routes (для всех авторизованных пользователей - врачей и пациентов)
@@ -62,8 +65,7 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 		// View available slots - все могут видеть доступные слоты
 		public.GET("/doctors/:id/available-slots", handler.GetAvailableSlots)
 
-		// Appointment management - пациенты бронируют, все могут отменять
+		// Appointment booking - пациенты бронируют
 		public.POST("/appointments/:id/book", handler.BookAppointment)
-		public.POST("/appointments/:id/cancel", handler.CancelAppointment)
 	}
 }
