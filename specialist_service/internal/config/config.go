@@ -126,6 +126,22 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.RabbitMQ.Password = rmqPass
 	}
 
+	if rmqExchange := os.Getenv("RMQ_EXCHANGE"); rmqExchange != "" {
+		cfg.RabbitMQ.Exchange = rmqExchange
+	}
+
+	if rmqDoctorQueue := os.Getenv("RMQ_DOCTOR_QUEUE"); rmqDoctorQueue != "" {
+		cfg.RabbitMQ.DoctorQueueName = rmqDoctorQueue
+	}
+
+	if rmqUserQueue := os.Getenv("RMQ_USER_QUEUE"); rmqUserQueue != "" {
+		cfg.RabbitMQ.UserQueueName = rmqUserQueue
+	}
+
+	if rmqRoutingKey := os.Getenv("RMQ_ROUTING_KEY"); rmqRoutingKey != "" {
+		cfg.RabbitMQ.RoutingKey = rmqRoutingKey
+	}
+
 	// JWT
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
 		cfg.JWT.Secret = jwtSecret
