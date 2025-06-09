@@ -61,19 +61,8 @@ func NewMessageService(
 		return nil, err
 	}
 
-	// Привязываем очередь к exchange
-	err = channel.QueueBind(
-		userQueueName, // имя очереди
-		routingKey,    // ключ маршрутизации из конфигурации
-		exchange,      // имя exchange
-		false,         // no-wait
-		nil,           // аргументы
-	)
-	if err != nil {
-		channel.Close()
-		conn.Close()
-		return nil, err
-	}
+	// НЕ создаем QueueBind - binding уже создан в identity_service
+	// Это предотвращает конфликты при множественных consumer'ах
 
 	return &messageService{
 		conn:          conn,
