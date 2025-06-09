@@ -170,7 +170,7 @@ services:
       - RMQ_USER=guest
       - RMQ_PASS=guest
       - RMQ_EXCHANGE=vitalem
-      - RMQ_USER_QUEUE=user.created.queue
+      - RMQ_USER_QUEUE=user.events
       - RMQ_ROUTING_KEY=user.created
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
