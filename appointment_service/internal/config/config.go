@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"gopkg.in/yaml.v3"
 )
@@ -36,8 +37,9 @@ type DatabaseConfig struct {
 
 // LoggingConfig - конфигурация логирования
 type LoggingConfig struct {
-	Level  string `yaml:"level" json:"level"`
-	Format string `yaml:"format" json:"format"`
+	ConsoleLevel string `yaml:"console_level" json:"console_level"`
+	ServiceLevel string `yaml:"service_level" json:"service_level"`
+	ServiceURL   string `yaml:"service_url" json:"service_url"`
 }
 
 // AppConfig - конфигурация приложения
@@ -57,6 +59,11 @@ type MeetingConfig struct {
 	PlatformURL string `yaml:"platform_url" env:"MEETING_PLATFORM_URL" envDefault:"https://meet.vitalem.kz"`
 }
 
+var (
+	config *Config
+	once   sync.Once
+)
+
 // LoadConfig - загрузка конфигурации из YAML файла
 func LoadConfig() (*Config, error) {
 	// Определяем путь к конфигурационному файлу
@@ -69,15 +76,25 @@ func LoadConfig() (*Config, error) {
 	}
 
 	// Парсим YAML
-	var config Config
-	if err := yaml.Unmarshal(data, &config); err != nil {
+	var cfg Config
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
 	// Переопределяем значения из переменных окружения, если они есть
-	overrideFromEnv(&config)
+	overrideFromEnv(&cfg)
 
-	return &config, nil
+	// Сохраняем конфигурацию в глобальную переменную
+	once.Do(func() {
+		config = &cfg
+	})
+
+	return &cfg, nil
+}
+
+// GetConfig - возвращает текущую конфигурацию
+func GetConfig() *Config {
+	return config
 }
 
 // getConfigPath - определение пути к конфигурационному файлу
@@ -137,11 +154,14 @@ func overrideFromEnv(config *Config) {
 	}
 
 	// Logging
-	if level := os.Getenv("LOG_LEVEL"); level != "" {
-		config.Logging.Level = level
+	if consoleLevel := os.Getenv("CONSOLE_LOG_LEVEL"); consoleLevel != "" {
+		config.Logging.ConsoleLevel = consoleLevel
 	}
-	if format := os.Getenv("LOG_FORMAT"); format != "" {
-		config.Logging.Format = format
+	if serviceLevel := os.Getenv("SERVICE_LOG_LEVEL"); serviceLevel != "" {
+		config.Logging.ServiceLevel = serviceLevel
+	}
+	if serviceURL := os.Getenv("LOGGER_SERVICE_URL"); serviceURL != "" {
+		config.Logging.ServiceURL = serviceURL
 	}
 
 	// App

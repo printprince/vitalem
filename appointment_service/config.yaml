@@ -11,8 +11,9 @@ database:
   ssl_mode: "disable"
 
 logging:
-  level: "info"
-  format: "json"
+  console_level: info   # Уровень логов для консоли
+  service_level: info   # Уровень логов для logger_service
+  service_url: http://logger_service:8802
 
 app:
   name: "appointment-service"

@@ -11,10 +11,25 @@ import (
 	"NotificationService/internal/infrastructure/codegen"
 	"NotificationService/internal/infrastructure/email"
 	"NotificationService/internal/infrastructure/telegram"
-	"NotificationService/pkg/logger"
 
 	"github.com/google/uuid"
 )
+
+// LoggerInterface - интерфейс для логгера
+type LoggerInterface interface {
+	Info(msg string, keysAndValues ...interface{})
+	Error(msg string, keysAndValues ...interface{})
+	Fatal(msg string, keysAndValues ...interface{})
+	Sugar() SugarInterface
+}
+
+// SugarInterface - интерфейс для Sugar логгера
+type SugarInterface interface {
+	Infow(msg string, keysAndValues ...interface{})
+	Errorw(msg string, keysAndValues ...interface{})
+	Fatalw(msg string, keysAndValues ...interface{})
+	Warnw(msg string, keysAndValues ...interface{})
+}
 
 type NotificationService interface {
 	Send(ctx context.Context, notification *models.Notification) error
@@ -28,7 +43,7 @@ type notificationService struct {
 	email      email.Sender
 	telegram   telegram.Sender
 	codegen    codegen.Generator
-	log        *logger.Logger
+	log        LoggerInterface
 	identity   *IdentityNotificationService
 	patient    *PatientNotificationService
 	specialist *SpecialistNotificationService
@@ -41,7 +56,7 @@ func NewNotificationService(
 	emailSender email.Sender,
 	telegramSender telegram.Sender,
 	codeGenerator codegen.Generator,
-	log *logger.Logger,
+	log LoggerInterface,
 ) NotificationService {
 	return &notificationService{
 		repo:       repo,

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/printprince/vitalem/appointment_service/internal/models"
 	"github.com/printprince/vitalem/appointment_service/internal/repository"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 )
 
 // AppointmentService - интерфейс сервиса
@@ -34,25 +35,62 @@ type AppointmentService interface {
 
 // appointmentService - реализация сервиса
 type appointmentService struct {
-	repo repository.AppointmentRepository
+	repo   repository.AppointmentRepository
+	logger *logger.Client
 }
 
 // NewAppointmentService - создание нового сервиса
-func NewAppointmentService(repo repository.AppointmentRepository) AppointmentService {
-	return &appointmentService{repo: repo}
+func NewAppointmentService(repo repository.AppointmentRepository, loggerClient *logger.Client) AppointmentService {
+	return &appointmentService{
+		repo:   repo,
+		logger: loggerClient,
+	}
+}
+
+// SetLogger - устанавливает логгер для сервиса (deprecated, используйте NewAppointmentService)
+func (s *appointmentService) SetLogger(loggerClient *logger.Client) {
+	s.logger = loggerClient
+}
+
+// logInfo - вспомогательный метод для информационного логирования
+func (s *appointmentService) logInfo(message string, metadata map[string]interface{}) {
+	if s.logger != nil {
+		s.logger.Info(message, metadata)
+	}
+}
+
+// logError - вспомогательный метод для логирования ошибок
+func (s *appointmentService) logError(message string, metadata map[string]interface{}) {
+	if s.logger != nil {
+		s.logger.Error(message, metadata)
+	}
 }
 
 // === SCHEDULES ===
 
 func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.CreateScheduleRequest) (*models.ScheduleResponse, error) {
-	// Если это основное расписание, деактивируем другие основные
+	s.logInfo("Creating schedule for doctor", map[string]interface{}{
+		"doctorID":     doctorID.String(),
+		"scheduleName": req.Name,
+	})
+
+	// Проверяем конфликты с существующими активными расписаниями
+	if err := s.checkScheduleConflicts(doctorID, req); err != nil {
+		s.logError("Schedule conflict detected", map[string]interface{}{
+			"doctorID": doctorID.String(),
+			"error":    err.Error(),
+		})
+		return nil, err
+	}
+
+	// Если это основное расписание, деактивируем все другие расписания
 	if req.IsDefault {
-		schedules, _ := s.repo.GetDoctorSchedules(doctorID)
-		for _, schedule := range schedules {
-			if schedule.IsDefault {
-				schedule.IsDefault = false
-				s.repo.UpdateSchedule(schedule)
-			}
+		if err := s.deactivateOtherSchedules(doctorID); err != nil {
+			s.logError("Failed to deactivate other schedules", map[string]interface{}{
+				"doctorID": doctorID.String(),
+				"error":    err.Error(),
+			})
+			return nil, fmt.Errorf("failed to update existing schedules: %w", err)
 		}
 	}
 
@@ -71,15 +109,115 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 	}
 
 	if err := s.repo.CreateSchedule(schedule); err != nil {
+		s.logError("Failed to create schedule in repository", map[string]interface{}{
+			"doctorID": doctorID.String(),
+			"error":    err.Error(),
+		})
 		return nil, fmt.Errorf("failed to create schedule: %w", err)
 	}
+
+	s.logInfo("Schedule created successfully", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": schedule.ID.String(),
+	})
 
 	return s.scheduleToResponse(schedule), nil
 }
 
-func (s *appointmentService) GetDoctorSchedules(doctorID uuid.UUID) ([]*models.ScheduleResponse, error) {
+// checkScheduleConflicts проверяет конфликты времени с существующими активными расписаниями
+func (s *appointmentService) checkScheduleConflicts(doctorID uuid.UUID, req *models.CreateScheduleRequest) error {
+	existingSchedules, err := s.repo.GetDoctorSchedules(doctorID)
+	if err != nil {
+		return fmt.Errorf("failed to get existing schedules: %w", err)
+	}
+
+	startTime, err := time.Parse("15:04", req.StartTime)
+	if err != nil {
+		return fmt.Errorf("invalid start time format: %w", err)
+	}
+
+	endTime, err := time.Parse("15:04", req.EndTime)
+	if err != nil {
+		return fmt.Errorf("invalid end time format: %w", err)
+	}
+
+	for _, existing := range existingSchedules {
+		if !existing.IsActive {
+			continue // пропускаем неактивные расписания
+		}
+
+		existingStart, _ := time.Parse("15:04", existing.StartTime)
+		existingEnd, _ := time.Parse("15:04", existing.EndTime)
+
+		// Проверяем пересечение рабочих дней
+		if s.hasWorkDayConflict(req.WorkDays, existing.WorkDays) {
+			// Проверяем пересечение времени
+			if s.hasTimeConflict(startTime, endTime, existingStart, existingEnd) {
+				return fmt.Errorf("schedule conflicts with existing schedule '%s' on overlapping work days and times", existing.Name)
+			}
+		}
+	}
+
+	return nil
+}
+
+// hasWorkDayConflict проверяет есть ли пересечения в рабочих днях
+func (s *appointmentService) hasWorkDayConflict(workDays1, workDays2 []int) bool {
+	dayMap := make(map[int]bool)
+	for _, day := range workDays1 {
+		dayMap[day] = true
+	}
+
+	for _, day := range workDays2 {
+		if dayMap[day] {
+			return true
+		}
+	}
+
+	return false
+}
+
+// hasTimeConflict проверяет пересекается ли время
+func (s *appointmentService) hasTimeConflict(start1, end1, start2, end2 time.Time) bool {
+	return start1.Before(end2) && end1.After(start2)
+}
+
+// deactivateOtherSchedules деактивирует все другие расписания врача
+func (s *appointmentService) deactivateOtherSchedules(doctorID uuid.UUID) error {
 	schedules, err := s.repo.GetDoctorSchedules(doctorID)
 	if err != nil {
+		return err
+	}
+
+	for _, schedule := range schedules {
+		if schedule.IsActive {
+			schedule.IsActive = false
+			schedule.IsDefault = false
+			if err := s.repo.UpdateSchedule(schedule); err != nil {
+				return fmt.Errorf("failed to deactivate schedule %s: %w", schedule.Name, err)
+			}
+			s.logInfo("Deactivated existing schedule", map[string]interface{}{
+				"doctorID":   doctorID.String(),
+				"scheduleID": schedule.ID.String(),
+				"name":       schedule.Name,
+			})
+		}
+	}
+
+	return nil
+}
+
+func (s *appointmentService) GetDoctorSchedules(doctorID uuid.UUID) ([]*models.ScheduleResponse, error) {
+	s.logInfo("Getting schedules for doctor", map[string]interface{}{
+		"doctorID": doctorID.String(),
+	})
+
+	schedules, err := s.repo.GetDoctorSchedules(doctorID)
+	if err != nil {
+		s.logError("Failed to get schedules from repository", map[string]interface{}{
+			"doctorID": doctorID.String(),
+			"error":    err.Error(),
+		})
 		return nil, fmt.Errorf("failed to get schedules: %w", err)
 	}
 
@@ -88,26 +226,66 @@ func (s *appointmentService) GetDoctorSchedules(doctorID uuid.UUID) ([]*models.S
 		responses[i] = s.scheduleToResponse(schedule)
 	}
 
+	s.logInfo("Schedules retrieved successfully", map[string]interface{}{
+		"doctorID":      doctorID.String(),
+		"scheduleCount": len(schedules),
+	})
+
 	return responses, nil
 }
 
 func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) error {
+	s.logInfo("Starting slot generation", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": scheduleID.String(),
+		"startDate":  req.StartDate,
+		"endDate":    req.EndDate,
+	})
+
 	schedule, err := s.repo.GetScheduleByID(scheduleID)
 	if err != nil {
+		s.logError("Schedule not found", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+			"error":      err.Error(),
+		})
 		return fmt.Errorf("schedule not found: %w", err)
 	}
 
 	if schedule.DoctorID != doctorID {
+		s.logError("Schedule ownership validation failed", map[string]interface{}{
+			"doctorID":         doctorID.String(),
+			"scheduleID":       scheduleID.String(),
+			"scheduleDoctorID": schedule.DoctorID.String(),
+		})
 		return errors.New("schedule doesn't belong to this doctor")
+	}
+
+	if !schedule.IsActive {
+		s.logError("Cannot generate slots for inactive schedule", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+		})
+		return errors.New("cannot generate slots for inactive schedule")
 	}
 
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
+		s.logError("Invalid start date format", map[string]interface{}{
+			"doctorID":  doctorID.String(),
+			"startDate": req.StartDate,
+			"error":     err.Error(),
+		})
 		return fmt.Errorf("invalid start date: %w", err)
 	}
 
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
 	if err != nil {
+		s.logError("Invalid end date format", map[string]interface{}{
+			"doctorID": doctorID.String(),
+			"endDate":  req.EndDate,
+			"error":    err.Error(),
+		})
 		return fmt.Errorf("invalid end date: %w", err)
 	}
 
@@ -118,6 +296,14 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 		dateStr := ex.Date.Format("2006-01-02")
 		exceptionMap[dateStr] = ex
 	}
+
+	s.logInfo("Retrieved exceptions for period", map[string]interface{}{
+		"doctorID":       doctorID.String(),
+		"exceptionCount": len(exceptions),
+	})
+
+	totalSlotsCreated := 0
+	totalSlotsSkipped := 0
 
 	// Генерируем слоты
 	for date := startDate; !date.After(endDate); date = date.AddDate(0, 0, 1) {
@@ -130,11 +316,18 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 		// Проверяем исключения
 		if exception, exists := exceptionMap[dateStr]; exists {
 			if exception.Type == "day_off" {
+				s.logInfo("Skipping day off", map[string]interface{}{
+					"doctorID": doctorID.String(),
+					"date":     dateStr,
+					"reason":   exception.Reason,
+				})
 				continue // Пропускаем выходной
 			}
 			// Для кастомных часов используем их вместо обычного расписания
 			if exception.Type == "custom_hours" && exception.CustomStartTime != nil && exception.CustomEndTime != nil {
-				s.generateSlotsForDay(date, *exception.CustomStartTime, *exception.CustomEndTime, nil, nil, schedule)
+				created, skipped := s.generateSlotsForDay(date, *exception.CustomStartTime, *exception.CustomEndTime, nil, nil, schedule)
+				totalSlotsCreated += created
+				totalSlotsSkipped += skipped
 				continue
 			}
 		}
@@ -153,24 +346,47 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 		}
 
 		// Генерируем слоты для обычного дня
-		s.generateSlotsForDay(date, schedule.StartTime, schedule.EndTime, schedule.BreakStart, schedule.BreakEnd, schedule)
+		created, skipped := s.generateSlotsForDay(date, schedule.StartTime, schedule.EndTime, schedule.BreakStart, schedule.BreakEnd, schedule)
+		totalSlotsCreated += created
+		totalSlotsSkipped += skipped
 	}
+
+	s.logInfo("Slot generation completed", map[string]interface{}{
+		"doctorID":          doctorID.String(),
+		"scheduleID":        scheduleID.String(),
+		"totalSlotsCreated": totalSlotsCreated,
+		"totalSlotsSkipped": totalSlotsSkipped,
+	})
 
 	return nil
 }
 
-func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endTime string, breakStart, breakEnd *string, schedule *models.DoctorSchedule) error {
+func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endTime string, breakStart, breakEnd *string, schedule *models.DoctorSchedule) (int, int) {
 	location := time.Local
+	slotsCreated := 0
+	slotsSkipped := 0
 
 	// Парсим время начала и конца
 	start, err := time.ParseInLocation("2006-01-02 15:04", date.Format("2006-01-02")+" "+startTime, location)
 	if err != nil {
-		return err
+		s.logError("Failed to parse start time", map[string]interface{}{
+			"doctorID":  schedule.DoctorID.String(),
+			"date":      date.Format("2006-01-02"),
+			"startTime": startTime,
+			"error":     err.Error(),
+		})
+		return slotsCreated, slotsSkipped
 	}
 
 	end, err := time.ParseInLocation("2006-01-02 15:04", date.Format("2006-01-02")+" "+endTime, location)
 	if err != nil {
-		return err
+		s.logError("Failed to parse end time", map[string]interface{}{
+			"doctorID": schedule.DoctorID.String(),
+			"date":     date.Format("2006-01-02"),
+			"endTime":  endTime,
+			"error":    err.Error(),
+		})
+		return slotsCreated, slotsSkipped
 	}
 
 	// Парсим перерыв, если есть
@@ -203,6 +419,18 @@ func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endT
 			}
 		}
 
+		// ПРОСТАЯ проверка: есть ли уже слот в это время
+		if s.slotExists(schedule.DoctorID, current, slotEnd) {
+			s.logInfo("Slot already exists, skipping", map[string]interface{}{
+				"doctorID":  schedule.DoctorID.String(),
+				"startTime": current.Format("2006-01-02 15:04:05"),
+				"endTime":   slotEnd.Format("2006-01-02 15:04:05"),
+			})
+			slotsSkipped++
+			current = slotEnd
+			continue
+		}
+
 		// Создаем слот
 		appointment := &models.Appointment{
 			StartTime:  current,
@@ -213,11 +441,36 @@ func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endT
 			ScheduleID: &schedule.ID,
 		}
 
-		s.repo.CreateAppointment(appointment)
+		if err := s.repo.CreateAppointment(appointment); err != nil {
+			s.logError("Failed to create appointment slot", map[string]interface{}{
+				"doctorID":  schedule.DoctorID.String(),
+				"startTime": current.Format("2006-01-02 15:04:05"),
+				"endTime":   slotEnd.Format("2006-01-02 15:04:05"),
+				"error":     err.Error(),
+			})
+		} else {
+			slotsCreated++
+		}
+
 		current = slotEnd
 	}
 
-	return nil
+	return slotsCreated, slotsSkipped
+}
+
+// slotExists простая проверка существования слота
+func (s *appointmentService) slotExists(doctorID uuid.UUID, startTime, endTime time.Time) bool {
+	exists, err := s.repo.CheckSlotExists(doctorID, startTime, endTime)
+	if err != nil {
+		s.logError("Error checking slot existence", map[string]interface{}{
+			"doctorID":  doctorID.String(),
+			"startTime": startTime.Format("2006-01-02 15:04:05"),
+			"endTime":   endTime.Format("2006-01-02 15:04:05"),
+			"error":     err.Error(),
+		})
+		return true // В случае ошибки считаем что слот существует (безопасно)
+	}
+	return exists
 }
 
 // === APPOINTMENTS ===

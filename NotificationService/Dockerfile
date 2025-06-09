@@ -4,6 +4,7 @@ WORKDIR /app
 
 # Создаем структуру директорий для правильной работы с replace директивами
 COPY ./utils ./utils
+COPY ./logger_service ./logger_service
 COPY ./NotificationService ./NotificationService
 
 # Переходим в директорию сервиса для сборки

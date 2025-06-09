@@ -278,13 +278,17 @@ services:
       - NOTIFICATION_URL=http://notification_service:8806/api/v1
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - LOGGER_LEVEL=info
+      - CONSOLE_LOG_LEVEL=info
+      - SERVICE_LOG_LEVEL=info
+      - LOGGER_SERVICE_URL=http://logger_service:8802
     ports:
       - "8805:8805"
     depends_on:
       postgres:
         condition: service_healthy
       notification_service:
+        condition: service_started
+      logger_service:
         condition: service_started
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8805/health"]
@@ -310,7 +314,9 @@ services:
       - DB_SSLMODE=disable
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
       - JWT_EXPIRE=168
-      - LOG_LEVEL=info
+      - CONSOLE_LOG_LEVEL=info
+      - SERVICE_LOG_LEVEL=info
+      - LOGGER_SERVICE_URL=http://logger_service:8802
       - SMTP_HOST=smtp.gmail.com
       - SMTP_PORT=465
       - SMTP_USERNAME=asylknazbaj@gmail.com
@@ -323,6 +329,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      logger_service:
+        condition: service_started
     networks:
       - app-network
 

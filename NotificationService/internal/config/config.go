@@ -16,7 +16,7 @@ type Config struct {
 	Server   ServerConfig   `yaml:"server"`
 	Database DatabaseConfig `yaml:"database"`
 	RabbitMQ RabbitMQConfig `yaml:"rabbitmq"`
-	Logger   LoggerConfig   `yaml:"logger"`
+	Logging  LoggingConfig  `yaml:"logging"`
 	Auth     AuthConfig     `yaml:"auth"`
 	SMTP     SMTPConfig     `yaml:"email"`
 	Telegram TelegramConfig `yaml:"telegram"`
@@ -45,9 +45,11 @@ type DatabaseConfig struct {
 	SSLMode  string `yaml:"sslmode"`
 }
 
-// LoggerConfig уровень логирования
-type LoggerConfig struct {
-	Level string `yaml:"level"` // debug, info, warn, error
+// LoggingConfig уровень логирования
+type LoggingConfig struct {
+	ConsoleLevel string `yaml:"console_level"`
+	ServiceLevel string `yaml:"service_level"`
+	ServiceURL   string `yaml:"service_url"`
 }
 
 // AuthConfig конфиг для JWT и т.п.
@@ -76,11 +78,11 @@ func LoadConfig(path string) (*Config, error) {
 
 // SMTPConfig — настройки SMTP для отправки email
 type SMTPConfig struct {
-	Host     string `yaml:"host"`
-	Port     int    `yaml:"port"`
-	Username string `yaml:"username"`
-	Password string `yaml:"password"`
-	From     string `yaml:"from"`
+	Host     string `yaml:"smtp_host"`
+	Port     int    `yaml:"smtp_port"`
+	Username string `yaml:"smtp_username"`
+	Password string `yaml:"smtp_password"`
+	From     string `yaml:"smtp_from"`
 }
 
 // PostgresDSN формирует строку подключения
@@ -96,9 +98,15 @@ func overrideFromEnv(cfg *Config) {
 		cfg.Server.Port = port
 	}
 
-	// Logger config
-	if level := os.Getenv("LOG_LEVEL"); level != "" {
-		cfg.Logger.Level = level
+	// Logging config
+	if consoleLevel := os.Getenv("CONSOLE_LOG_LEVEL"); consoleLevel != "" {
+		cfg.Logging.ConsoleLevel = consoleLevel
+	}
+	if serviceLevel := os.Getenv("SERVICE_LOG_LEVEL"); serviceLevel != "" {
+		cfg.Logging.ServiceLevel = serviceLevel
+	}
+	if serviceURL := os.Getenv("LOGGER_SERVICE_URL"); serviceURL != "" {
+		cfg.Logging.ServiceURL = serviceURL
 	}
 
 	// Auth config

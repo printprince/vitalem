@@ -7,11 +7,26 @@ import (
 
 	"NotificationService/internal/domain/models"
 	"NotificationService/internal/service"
-	"NotificationService/pkg/logger"
 
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 )
+
+// LoggerInterface - интерфейс для логгера
+type LoggerInterface interface {
+	Info(msg string, keysAndValues ...interface{})
+	Error(msg string, keysAndValues ...interface{})
+	Fatal(msg string, keysAndValues ...interface{})
+	Sugar() SugarInterface
+}
+
+// SugarInterface - интерфейс для Sugar логгера
+type SugarInterface interface {
+	Infow(msg string, keysAndValues ...interface{})
+	Errorw(msg string, keysAndValues ...interface{})
+	Fatalw(msg string, keysAndValues ...interface{})
+	Warnw(msg string, keysAndValues ...interface{})
+}
 
 type UserCreatedEvent struct {
 	UserID string `json:"user_id"`
@@ -23,10 +38,10 @@ type Consumer struct {
 	conn            *amqp.Connection
 	channel         *amqp.Channel
 	notificationSvc service.NotificationService
-	logger          *logger.Logger
+	logger          LoggerInterface
 }
 
-func NewConsumer(rabbitMQURL string, notificationSvc service.NotificationService, logger *logger.Logger) (*Consumer, error) {
+func NewConsumer(rabbitMQURL string, notificationSvc service.NotificationService, logger LoggerInterface) (*Consumer, error) {
 	conn, err := amqp.Dial(rabbitMQURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)

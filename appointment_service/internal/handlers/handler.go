@@ -7,16 +7,37 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/printprince/vitalem/appointment_service/internal/models"
 	"github.com/printprince/vitalem/appointment_service/internal/service"
+	"github.com/printprince/vitalem/logger_service/pkg/logger"
 )
 
 // AppointmentHandler - обработчик HTTP запросов
 type AppointmentHandler struct {
 	service service.AppointmentService
+	logger  *logger.Client
 }
 
 // NewAppointmentHandler - создание нового обработчика
 func NewAppointmentHandler(service service.AppointmentService) *AppointmentHandler {
 	return &AppointmentHandler{service: service}
+}
+
+// SetLogger - устанавливает логгер для хендлера
+func (h *AppointmentHandler) SetLogger(loggerClient *logger.Client) {
+	h.logger = loggerClient
+}
+
+// logInfo - вспомогательный метод для информационного логирования
+func (h *AppointmentHandler) logInfo(message string, metadata map[string]interface{}) {
+	if h.logger != nil {
+		h.logger.Info(message, metadata)
+	}
+}
+
+// logError - вспомогательный метод для логирования ошибок
+func (h *AppointmentHandler) logError(message string, metadata map[string]interface{}) {
+	if h.logger != nil {
+		h.logger.Error(message, metadata)
+	}
 }
 
 // === SCHEDULE ENDPOINTS ===
@@ -26,6 +47,9 @@ func (h *AppointmentHandler) CreateSchedule(c echo.Context) error {
 	// Получаем user_id из JWT контекста
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
+		h.logError("Invalid user ID in token", map[string]interface{}{
+			"endpoint": "CreateSchedule",
+		})
 		return c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
 			Error:   "Invalid user ID in token",
@@ -34,6 +58,11 @@ func (h *AppointmentHandler) CreateSchedule(c echo.Context) error {
 
 	var req models.CreateScheduleRequest
 	if err := c.Bind(&req); err != nil {
+		h.logError("Invalid request body", map[string]interface{}{
+			"endpoint": "CreateSchedule",
+			"userID":   userID.String(),
+			"error":    err.Error(),
+		})
 		return c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Error:   "Invalid request body",
@@ -42,19 +71,41 @@ func (h *AppointmentHandler) CreateSchedule(c echo.Context) error {
 
 	// Валидация входящих данных
 	if err := c.Validate(&req); err != nil {
+		h.logError("Validation error", map[string]interface{}{
+			"endpoint": "CreateSchedule",
+			"userID":   userID.String(),
+			"error":    err.Error(),
+		})
 		return c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
 	}
 
+	h.logInfo("Creating schedule", map[string]interface{}{
+		"endpoint":     "CreateSchedule",
+		"userID":       userID.String(),
+		"scheduleName": req.Name,
+	})
+
 	response, err := h.service.CreateSchedule(userID, &req)
 	if err != nil {
+		h.logError("Failed to create schedule", map[string]interface{}{
+			"endpoint": "CreateSchedule",
+			"userID":   userID.String(),
+			"error":    err.Error(),
+		})
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
 	}
+
+	h.logInfo("Schedule created successfully", map[string]interface{}{
+		"endpoint":   "CreateSchedule",
+		"userID":     userID.String(),
+		"scheduleID": response.ID.String(),
+	})
 
 	return c.JSON(http.StatusCreated, models.APIResponse{
 		Success: true,
@@ -66,19 +117,38 @@ func (h *AppointmentHandler) CreateSchedule(c echo.Context) error {
 func (h *AppointmentHandler) GetDoctorSchedules(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
+		h.logError("Invalid user ID in token", map[string]interface{}{
+			"endpoint": "GetDoctorSchedules",
+		})
 		return c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
 			Error:   "Invalid user ID in token",
 		})
 	}
 
+	h.logInfo("Getting doctor schedules", map[string]interface{}{
+		"endpoint": "GetDoctorSchedules",
+		"userID":   userID.String(),
+	})
+
 	schedules, err := h.service.GetDoctorSchedules(userID)
 	if err != nil {
+		h.logError("Failed to get doctor schedules", map[string]interface{}{
+			"endpoint": "GetDoctorSchedules",
+			"userID":   userID.String(),
+			"error":    err.Error(),
+		})
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Error:   err.Error(),
 		})
 	}
+
+	h.logInfo("Doctor schedules retrieved successfully", map[string]interface{}{
+		"endpoint":      "GetDoctorSchedules",
+		"userID":        userID.String(),
+		"scheduleCount": len(schedules),
+	})
 
 	return c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,

@@ -24,6 +24,7 @@ type AppointmentRepository interface {
 	GetDoctorAppointments(doctorID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
 	GetPatientAppointments(patientID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
 	UpdateAppointment(appointment *models.Appointment) error
+	CheckSlotExists(doctorID uuid.UUID, startTime, endTime time.Time) (bool, error)
 
 	// Exceptions
 	CreateException(exception *models.ScheduleException) error
@@ -137,4 +138,13 @@ func (r *appointmentRepository) GetDoctorExceptions(doctorID uuid.UUID, startDat
 
 func (r *appointmentRepository) DeleteException(id uuid.UUID) error {
 	return r.db.Delete(&models.ScheduleException{}, "id = ?", id).Error
+}
+
+func (r *appointmentRepository) CheckSlotExists(doctorID uuid.UUID, startTime, endTime time.Time) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Appointment{}).
+		Where("doctor_id = ? AND ((start_time <= ? AND end_time > ?) OR (start_time < ? AND end_time >= ?) OR (start_time >= ? AND end_time <= ?))",
+			doctorID, startTime, startTime, endTime, endTime, startTime, endTime).
+		Count(&count).Error
+	return count > 0, err
 }
