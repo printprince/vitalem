@@ -135,6 +135,14 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.RabbitMQ.Exchange = rmqExchange
 	}
 
+	if rmqUserQueue := os.Getenv("RMQ_USER_QUEUE"); rmqUserQueue != "" {
+		cfg.RabbitMQ.UserQueue = rmqUserQueue
+	}
+
+	if rmqRoutingKey := os.Getenv("RMQ_ROUTING_KEY"); rmqRoutingKey != "" {
+		cfg.RabbitMQ.RoutingKey = rmqRoutingKey
+	}
+
 	// Logging
 	if loggerURL := os.Getenv("LOGGER_SERVICE_URL"); loggerURL != "" {
 		if cfg.Logging == nil {
