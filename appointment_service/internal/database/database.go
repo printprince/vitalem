@@ -38,6 +38,11 @@ func ConnectDB(cfg *config.Config) (*gorm.DB, error) {
 func RunMigrations(db *gorm.DB) error {
 	log.Println("🔄 Running database migrations...")
 
+	// Ручная миграция для изменения структуры doctor_schedules
+	if err := migrateScheduleWorkDays(db); err != nil {
+		return fmt.Errorf("failed to migrate schedule work days: %w", err)
+	}
+
 	// Автоматическая миграция моделей
 	err := db.AutoMigrate(
 		&models.DoctorSchedule{},
@@ -49,6 +54,85 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	log.Println("✅ Database migrations completed successfully")
+	return nil
+}
+
+// migrateScheduleWorkDays - миграция для изменения work_days на work_days_json
+func migrateScheduleWorkDays(db *gorm.DB) error {
+	log.Println("🔄 Migrating doctor_schedules work_days to work_days_json...")
+
+	// Проверяем существует ли таблица doctor_schedules
+	var tableExists bool
+	err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules')").Scan(&tableExists).Error
+	if err != nil {
+		return fmt.Errorf("failed to check table existence: %w", err)
+	}
+
+	if !tableExists {
+		log.Println("📝 Table doctor_schedules doesn't exist yet, skipping migration")
+		return nil
+	}
+
+	// Проверяем существует ли старый столбец work_days
+	var workDaysColumnExists bool
+	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days')").Scan(&workDaysColumnExists).Error
+	if err != nil {
+		return fmt.Errorf("failed to check work_days column: %w", err)
+	}
+
+	// Проверяем существует ли новый столбец work_days_json
+	var workDaysJsonColumnExists bool
+	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days_json')").Scan(&workDaysJsonColumnExists).Error
+	if err != nil {
+		return fmt.Errorf("failed to check work_days_json column: %w", err)
+	}
+
+	if workDaysColumnExists && !workDaysJsonColumnExists {
+		log.Println("🔄 Converting work_days integer[] to work_days_json text...")
+
+		// 1. Добавляем новый столбец work_days_json
+		err = db.Exec("ALTER TABLE doctor_schedules ADD COLUMN work_days_json TEXT").Error
+		if err != nil {
+			return fmt.Errorf("failed to add work_days_json column: %w", err)
+		}
+
+		// 2. Конвертируем данные из work_days в work_days_json
+		err = db.Exec(`
+			UPDATE doctor_schedules 
+			SET work_days_json = (
+				SELECT json_agg(unnest)::text 
+				FROM unnest(work_days)
+			) 
+			WHERE work_days IS NOT NULL AND array_length(work_days, 1) > 0`).Error
+		if err != nil {
+			return fmt.Errorf("failed to convert work_days data: %w", err)
+		}
+
+		// 3. Устанавливаем значение по умолчанию для пустых массивов
+		err = db.Exec("UPDATE doctor_schedules SET work_days_json = '[]' WHERE work_days_json IS NULL").Error
+		if err != nil {
+			return fmt.Errorf("failed to set default work_days_json values: %w", err)
+		}
+
+		// 4. Добавляем NOT NULL constraint
+		err = db.Exec("ALTER TABLE doctor_schedules ALTER COLUMN work_days_json SET NOT NULL").Error
+		if err != nil {
+			return fmt.Errorf("failed to set NOT NULL constraint: %w", err)
+		}
+
+		// 5. Удаляем старый столбец work_days
+		err = db.Exec("ALTER TABLE doctor_schedules DROP COLUMN work_days").Error
+		if err != nil {
+			return fmt.Errorf("failed to drop work_days column: %w", err)
+		}
+
+		log.Println("✅ Successfully migrated work_days to work_days_json")
+	} else if workDaysJsonColumnExists && !workDaysColumnExists {
+		log.Println("📝 Migration already completed - work_days_json column exists")
+	} else if !workDaysColumnExists && !workDaysJsonColumnExists {
+		log.Println("📝 Fresh installation - no migration needed")
+	}
+
 	return nil
 }
 
