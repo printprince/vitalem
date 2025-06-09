@@ -77,24 +77,18 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 		"scheduleName": req.Name,
 	})
 
-	// Проверяем конфликты с существующими активными расписаниями
-	if err := s.checkScheduleConflicts(doctorID, req); err != nil {
-		s.logError("Schedule conflict detected", map[string]interface{}{
+	// При создании нового расписания ВСЕГДА деактивируем все существующие
+	// чтобы у врача было только одно активное расписание
+	s.logInfo("Deactivating all existing schedules for single active schedule policy", map[string]interface{}{
+		"doctorID": doctorID.String(),
+	})
+
+	if err := s.deactivateOtherSchedules(doctorID); err != nil {
+		s.logError("Failed to deactivate existing schedules", map[string]interface{}{
 			"doctorID": doctorID.String(),
 			"error":    err.Error(),
 		})
-		return nil, err
-	}
-
-	// Если это основное расписание, деактивируем все другие расписания
-	if req.IsDefault {
-		if err := s.deactivateOtherSchedules(doctorID); err != nil {
-			s.logError("Failed to deactivate other schedules", map[string]interface{}{
-				"doctorID": doctorID.String(),
-				"error":    err.Error(),
-			})
-			return nil, fmt.Errorf("failed to update existing schedules: %w", err)
-		}
+		return nil, fmt.Errorf("failed to deactivate existing schedules: %w", err)
 	}
 
 	schedule := &models.DoctorSchedule{
@@ -106,8 +100,8 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 		BreakEnd:     req.BreakEnd,
 		SlotDuration: req.SlotDuration,
 		SlotTitle:    req.SlotTitle,
-		IsActive:     true,
-		IsDefault:    req.IsDefault,
+		IsActive:     true, // Новое расписание всегда активно
+		IsDefault:    true, // И всегда основное (поскольку единственное активное)
 	}
 
 	// Устанавливаем рабочие дни через новый метод
@@ -124,6 +118,8 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 	s.logInfo("Schedule created successfully", map[string]interface{}{
 		"doctorID":   doctorID.String(),
 		"scheduleID": schedule.ID.String(),
+		"isActive":   schedule.IsActive,
+		"isDefault":  schedule.IsDefault,
 	})
 
 	return s.scheduleToResponse(schedule), nil
@@ -187,14 +183,25 @@ func (s *appointmentService) hasTimeConflict(start1, end1, start2, end2 time.Tim
 	return start1.Before(end2) && end1.After(start2)
 }
 
-// deactivateOtherSchedules деактивирует все другие расписания врача
-func (s *appointmentService) deactivateOtherSchedules(doctorID uuid.UUID) error {
+// deactivateOtherSchedules деактивирует все другие расписания врача (кроме указанного ID, если передан)
+func (s *appointmentService) deactivateOtherSchedules(doctorID uuid.UUID, excludeIDs ...uuid.UUID) error {
 	schedules, err := s.repo.GetDoctorSchedules(doctorID)
 	if err != nil {
 		return err
 	}
 
+	// Создаем мапу исключений для быстрого поиска
+	excludeMap := make(map[uuid.UUID]bool)
+	for _, id := range excludeIDs {
+		excludeMap[id] = true
+	}
+
 	for _, schedule := range schedules {
+		// Пропускаем расписания из списка исключений
+		if excludeMap[schedule.ID] {
+			continue
+		}
+
 		if schedule.IsActive {
 			schedule.IsActive = false
 			schedule.IsDefault = false
@@ -841,25 +848,34 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
-	// Если активируем расписание - проверяем конфликты
+	// Если активируем расписание - деактивируем все остальные
 	if req.IsActive && !schedule.IsActive {
-		s.logInfo("Checking conflicts before activating schedule", map[string]interface{}{
+		s.logInfo("Activating schedule - deactivating all other schedules", map[string]interface{}{
 			"doctorID":   doctorID.String(),
 			"scheduleID": scheduleID.String(),
 			"name":       schedule.Name,
 		})
 
-		if err := s.checkScheduleConflictsForExisting(doctorID, schedule); err != nil {
-			s.logError("Cannot activate schedule due to conflicts", map[string]interface{}{
+		// Деактивируем все другие активные расписания
+		if err := s.deactivateOtherSchedules(doctorID, scheduleID); err != nil {
+			s.logError("Failed to deactivate other schedules", map[string]interface{}{
 				"doctorID":   doctorID.String(),
 				"scheduleID": scheduleID.String(),
 				"error":      err.Error(),
 			})
-			return nil, err
+			return nil, fmt.Errorf("failed to deactivate other schedules: %w", err)
 		}
+
+		// Устанавливаем это расписание как основное при активации
+		schedule.IsDefault = true
 	}
 
 	schedule.IsActive = req.IsActive
+
+	// Если деактивируем - убираем флаг основного
+	if !req.IsActive {
+		schedule.IsDefault = false
+	}
 
 	if err := s.repo.UpdateSchedule(schedule); err != nil {
 		return nil, fmt.Errorf("failed to toggle schedule: %w", err)
@@ -869,6 +885,7 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		"doctorID":   doctorID.String(),
 		"scheduleID": scheduleID.String(),
 		"isActive":   req.IsActive,
+		"isDefault":  schedule.IsDefault,
 	})
 
 	return s.scheduleToResponse(schedule), nil
