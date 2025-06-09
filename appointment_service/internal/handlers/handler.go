@@ -318,7 +318,8 @@ func (h *AppointmentHandler) GenerateSlots(c echo.Context) error {
 		})
 	}
 
-	if err := h.service.GenerateSlots(userID, scheduleID, &req); err != nil {
+	response, err := h.service.GenerateSlots(userID, scheduleID, &req)
+	if err != nil {
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
 			Error:   err.Error(),
@@ -327,7 +328,7 @@ func (h *AppointmentHandler) GenerateSlots(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Data:    "Slots generated successfully",
+		Data:    response,
 	})
 }
 

@@ -19,7 +19,7 @@ type AppointmentService interface {
 	UpdateSchedule(doctorID, scheduleID uuid.UUID, req *models.UpdateScheduleRequest) (*models.ScheduleResponse, error)
 	DeleteSchedule(doctorID, scheduleID uuid.UUID) error
 	ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest, hasRequestBody bool) (*models.ScheduleResponse, error)
-	GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) error
+	GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) (*models.GenerateSlotsResponse, error)
 
 	// Appointments
 	GetAvailableSlots(doctorID uuid.UUID, date string) ([]*models.AvailableSlot, error)
@@ -246,7 +246,7 @@ func (s *appointmentService) GetDoctorSchedules(doctorID uuid.UUID) ([]*models.S
 	return responses, nil
 }
 
-func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) error {
+func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) (*models.GenerateSlotsResponse, error) {
 	s.logInfo("Starting slot generation", map[string]interface{}{
 		"doctorID":   doctorID.String(),
 		"scheduleID": scheduleID.String(),
@@ -261,7 +261,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			"scheduleID": scheduleID.String(),
 			"error":      err.Error(),
 		})
-		return fmt.Errorf("schedule not found: %w", err)
+		return nil, fmt.Errorf("schedule not found: %w", err)
 	}
 
 	if schedule.DoctorID != doctorID {
@@ -270,7 +270,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			"scheduleID":       scheduleID.String(),
 			"scheduleDoctorID": schedule.DoctorID.String(),
 		})
-		return errors.New("schedule doesn't belong to this doctor")
+		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
 	if !schedule.IsActive {
@@ -278,7 +278,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			"doctorID":   doctorID.String(),
 			"scheduleID": scheduleID.String(),
 		})
-		return errors.New("cannot generate slots for inactive schedule")
+		return nil, errors.New("cannot generate slots for inactive schedule")
 	}
 
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
@@ -288,7 +288,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			"startDate": req.StartDate,
 			"error":     err.Error(),
 		})
-		return fmt.Errorf("invalid start date: %w", err)
+		return nil, fmt.Errorf("invalid start date: %w", err)
 	}
 
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
@@ -298,7 +298,7 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 			"endDate":  req.EndDate,
 			"error":    err.Error(),
 		})
-		return fmt.Errorf("invalid end date: %w", err)
+		return nil, fmt.Errorf("invalid end date: %w", err)
 	}
 
 	// Получаем исключения для периода
@@ -370,7 +370,20 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 		"totalSlotsSkipped": totalSlotsSkipped,
 	})
 
-	return nil
+	totalSlots := totalSlotsCreated + totalSlotsSkipped
+	var message string
+	if totalSlotsSkipped > 0 {
+		message = fmt.Sprintf("Генерация завершена: создано %d новых слотов, пропущено %d существующих слотов", totalSlotsCreated, totalSlotsSkipped)
+	} else {
+		message = fmt.Sprintf("Генерация завершена: создано %d новых слотов", totalSlotsCreated)
+	}
+
+	return &models.GenerateSlotsResponse{
+		SlotsCreated: totalSlotsCreated,
+		SlotsSkipped: totalSlotsSkipped,
+		TotalSlots:   totalSlots,
+		Message:      message,
+	}, nil
 }
 
 func (s *appointmentService) generateSlotsForDay(date time.Time, startTime, endTime string, breakStart, breakEnd *string, schedule *models.DoctorSchedule) (int, int) {

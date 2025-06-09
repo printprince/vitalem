@@ -63,6 +63,14 @@ type GenerateSlotsRequest struct {
 	EndDate   string `json:"end_date" validate:"required,len=10"`   // "2024-06-30"
 }
 
+// GenerateSlotsResponse - ответ генерации слотов
+type GenerateSlotsResponse struct {
+	SlotsCreated int    `json:"slots_created"`
+	SlotsSkipped int    `json:"slots_skipped"`
+	TotalSlots   int    `json:"total_slots"`
+	Message      string `json:"message"`
+}
+
 // === APPOINTMENT DTOs ===
 
 // BookAppointmentRequest - бронирование записи
