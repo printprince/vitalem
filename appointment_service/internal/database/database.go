@@ -112,6 +112,16 @@ func checkAndFixScheduleTable(db *gorm.DB) error {
 		log.Println("📝 Table structure looks compatible, work_days_json will be created by AutoMigrate")
 	} else {
 		log.Println("✅ Table structure is correct, work_days_json column exists")
+
+		// Пробуем выполнить простой RAW SQL запрос
+		log.Println("🔍 Testing raw SQL query on doctor_schedules...")
+		var count int64
+		err = db.Raw("SELECT COUNT(*) FROM doctor_schedules").Scan(&count).Error
+		if err != nil {
+			log.Printf("⚠️  Raw SQL query failed: %v", err)
+			return fmt.Errorf("raw SQL query failed: %w", err)
+		}
+		log.Printf("✅ Raw SQL query successful, found %d records", count)
 	}
 
 	return nil
