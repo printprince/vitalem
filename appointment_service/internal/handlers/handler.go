@@ -363,6 +363,91 @@ func (h *AppointmentHandler) DeleteScheduleSlots(c echo.Context) error {
 	})
 }
 
+// GetGeneratedSlots - GET /api/doctor/schedules/:id/generated-slots
+func (h *AppointmentHandler) GetGeneratedSlots(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		h.logError("Failed to get user ID from context", map[string]interface{}{
+			"endpoint": "GetGeneratedSlots",
+		})
+		return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+
+	scheduleID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		h.logError("Invalid schedule ID format", map[string]interface{}{
+			"endpoint":   "GetGeneratedSlots",
+			"scheduleID": c.Param("id"),
+			"userID":     userID.String(),
+			"error":      err.Error(),
+		})
+		return echo.NewHTTPError(http.StatusBadRequest, "Invalid schedule ID format")
+	}
+
+	// Получаем параметры запроса
+	startDate := c.QueryParam("start_date")
+	endDate := c.QueryParam("end_date")
+
+	// Валидируем параметры
+	if startDate == "" || endDate == "" {
+		h.logError("Missing required query parameters", map[string]interface{}{
+			"endpoint":   "GetGeneratedSlots",
+			"userID":     userID.String(),
+			"scheduleID": scheduleID.String(),
+			"startDate":  startDate,
+			"endDate":    endDate,
+		})
+		return echo.NewHTTPError(http.StatusBadRequest, "start_date and end_date parameters are required")
+	}
+
+	// Простая валидация формата даты
+	if len(startDate) != 10 || len(endDate) != 10 {
+		h.logError("Invalid date format", map[string]interface{}{
+			"endpoint":   "GetGeneratedSlots",
+			"userID":     userID.String(),
+			"scheduleID": scheduleID.String(),
+			"startDate":  startDate,
+			"endDate":    endDate,
+		})
+		return echo.NewHTTPError(http.StatusBadRequest, "Date format should be YYYY-MM-DD")
+	}
+
+	h.logInfo("Getting generated slots", map[string]interface{}{
+		"endpoint":   "GetGeneratedSlots",
+		"userID":     userID.String(),
+		"scheduleID": scheduleID.String(),
+		"startDate":  startDate,
+		"endDate":    endDate,
+	})
+
+	response, err := h.service.GetGeneratedSlots(userID, scheduleID, startDate, endDate)
+	if err != nil {
+		h.logError("Failed to get generated slots", map[string]interface{}{
+			"endpoint":   "GetGeneratedSlots",
+			"userID":     userID.String(),
+			"scheduleID": scheduleID.String(),
+			"startDate":  startDate,
+			"endDate":    endDate,
+			"error":      err.Error(),
+		})
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	h.logInfo("Generated slots retrieved successfully", map[string]interface{}{
+		"endpoint":       "GetGeneratedSlots",
+		"userID":         userID.String(),
+		"scheduleID":     scheduleID.String(),
+		"totalSlots":     response.Summary.TotalSlots,
+		"availableSlots": response.Summary.AvailableSlots,
+		"bookedSlots":    response.Summary.BookedSlots,
+	})
+
+	return c.JSON(http.StatusOK, &models.APIResponse{
+		Success: true,
+		Data:    response,
+	})
+}
+
 // === APPOINTMENT ENDPOINTS ===
 
 // GetAvailableSlots - GET /api/doctors/:id/available-slots?date=2024-06-15

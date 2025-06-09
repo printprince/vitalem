@@ -18,6 +18,8 @@ type AppointmentRepository interface {
 	DeleteSchedule(id uuid.UUID) error
 	// НОВЫЙ метод для удаления слотов расписания
 	DeleteScheduleSlots(scheduleID uuid.UUID) error
+	// НОВЫЙ метод для получения сгенерированных слотов
+	GetScheduleSlots(scheduleID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
 
 	// Appointments
 	CreateAppointment(appointment *models.Appointment) error
@@ -162,4 +164,13 @@ func (r *appointmentRepository) DeleteScheduleSlots(scheduleID uuid.UUID) error 
 	// Забронированные слоты сохраняем для истории
 	return r.db.Where("schedule_id = ? AND status = ?", scheduleID, "available").
 		Delete(&models.Appointment{}).Error
+}
+
+func (r *appointmentRepository) GetScheduleSlots(scheduleID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error) {
+	var slots []*models.Appointment
+	err := r.db.Where("schedule_id = ? AND start_time >= ? AND end_time <= ?",
+		scheduleID, startDate, endDate).
+		Order("start_time ASC").
+		Find(&slots).Error
+	return slots, err
 }

@@ -151,3 +151,63 @@ type PaginatedResponse struct {
 	Page    int         `json:"page"`
 	Limit   int         `json:"limit"`
 }
+
+// GeneratedSlotsRequest - запрос для получения сгенерированных слотов
+type GeneratedSlotsRequest struct {
+	StartDate string `json:"start_date" validate:"required,len=10"` // "2024-06-01"
+	EndDate   string `json:"end_date" validate:"required,len=10"`   // "2024-06-30"
+}
+
+// GeneratedSlotDetail - детальная информация о сгенерированном слоте
+type GeneratedSlotDetail struct {
+	ID              uuid.UUID `json:"id"`
+	StartTime       time.Time `json:"start_time"`
+	EndTime         time.Time `json:"end_time"`
+	Duration        int       `json:"duration_minutes"`
+	Status          string    `json:"status"`           // "available", "booked", "canceled"
+	AppointmentType string    `json:"appointment_type"` // "offline", "online"
+	Title           string    `json:"title"`
+
+	// Информация о пациенте, если слот забронирован
+	PatientID    *uuid.UUID `json:"patient_id,omitempty"`
+	PatientNotes string     `json:"patient_notes,omitempty"`
+	BookedAt     *time.Time `json:"booked_at,omitempty"`
+}
+
+// ScheduleMetadata - метаданные расписания для сгенерированных слотов
+type ScheduleMetadata struct {
+	ID                uuid.UUID `json:"id"`
+	Name              string    `json:"name"`
+	WorkDays          []int     `json:"work_days"`
+	StartTime         string    `json:"start_time"`
+	EndTime           string    `json:"end_time"`
+	BreakStart        *string   `json:"break_start,omitempty"`
+	BreakEnd          *string   `json:"break_end,omitempty"`
+	SlotDuration      int64     `json:"slot_duration"`
+	SlotTitle         string    `json:"slot_title"`
+	AppointmentFormat string    `json:"appointment_format"`
+	IsActive          bool      `json:"is_active"`
+}
+
+// GeneratedSlotsResponse - ответ с детальной информацией о сгенерированных слотах
+type GeneratedSlotsResponse struct {
+	Schedule ScheduleMetadata      `json:"schedule"`
+	Period   Period                `json:"period"`
+	Slots    []GeneratedSlotDetail `json:"slots"`
+	Summary  SlotsSummary          `json:"summary"`
+}
+
+// Period - период генерации слотов
+type Period struct {
+	StartDate string `json:"start_date"` // "2024-06-01"
+	EndDate   string `json:"end_date"`   // "2024-06-30"
+	Days      int    `json:"days"`       // Количество дней в периоде
+}
+
+// SlotsSummary - сводка по слотам
+type SlotsSummary struct {
+	TotalSlots     int `json:"total_slots"`
+	AvailableSlots int `json:"available_slots"`
+	BookedSlots    int `json:"booked_slots"`
+	CanceledSlots  int `json:"canceled_slots"`
+}

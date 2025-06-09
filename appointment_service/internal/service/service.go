@@ -20,6 +20,7 @@ type AppointmentService interface {
 	DeleteSchedule(doctorID, scheduleID uuid.UUID) error
 	ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest, hasRequestBody bool) (*models.ScheduleResponse, error)
 	GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) (*models.GenerateSlotsResponse, error)
+	GetGeneratedSlots(doctorID, scheduleID uuid.UUID, startDate, endDate string) (*models.GeneratedSlotsResponse, error)
 
 	// Appointments
 	GetAvailableSlots(doctorID uuid.UUID, date string) ([]*models.AvailableSlot, error)
@@ -1005,4 +1006,153 @@ func (s *appointmentService) DeleteScheduleSlots(doctorID, scheduleID uuid.UUID)
 	}
 
 	return nil
+}
+
+func (s *appointmentService) GetGeneratedSlots(doctorID, scheduleID uuid.UUID, startDate, endDate string) (*models.GeneratedSlotsResponse, error) {
+	s.logInfo("Getting generated slots", map[string]interface{}{
+		"doctorID":   doctorID.String(),
+		"scheduleID": scheduleID.String(),
+		"startDate":  startDate,
+		"endDate":    endDate,
+	})
+
+	// Проверяем расписание и права доступа
+	schedule, err := s.repo.GetScheduleByID(scheduleID)
+	if err != nil {
+		s.logError("Schedule not found", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+			"error":      err.Error(),
+		})
+		return nil, fmt.Errorf("schedule not found: %w", err)
+	}
+
+	if schedule.DoctorID != doctorID {
+		s.logError("Schedule ownership validation failed", map[string]interface{}{
+			"doctorID":         doctorID.String(),
+			"scheduleID":       scheduleID.String(),
+			"scheduleDoctorID": schedule.DoctorID.String(),
+		})
+		return nil, errors.New("schedule doesn't belong to this doctor")
+	}
+
+	// Парсим даты
+	start, err := time.Parse("2006-01-02", startDate)
+	if err != nil {
+		s.logError("Invalid start date format", map[string]interface{}{
+			"doctorID":  doctorID.String(),
+			"startDate": startDate,
+			"error":     err.Error(),
+		})
+		return nil, fmt.Errorf("invalid start date: %w", err)
+	}
+
+	end, err := time.Parse("2006-01-02", endDate)
+	if err != nil {
+		s.logError("Invalid end date format", map[string]interface{}{
+			"doctorID": doctorID.String(),
+			"endDate":  endDate,
+			"error":    err.Error(),
+		})
+		return nil, fmt.Errorf("invalid end date: %w", err)
+	}
+
+	// Добавляем время к концу дня для правильного поиска
+	endWithTime := end.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
+
+	// Получаем все слоты для расписания в заданном периоде
+	appointments, err := s.repo.GetScheduleSlots(scheduleID, start, endWithTime)
+	if err != nil {
+		s.logError("Failed to get schedule slots from repository", map[string]interface{}{
+			"doctorID":   doctorID.String(),
+			"scheduleID": scheduleID.String(),
+			"error":      err.Error(),
+		})
+		return nil, fmt.Errorf("failed to get schedule slots: %w", err)
+	}
+
+	// Преобразуем слоты в детальную информацию
+	slots := make([]models.GeneratedSlotDetail, len(appointments))
+	var availableCount, bookedCount, canceledCount int
+
+	for i, appointment := range appointments {
+		duration := int(appointment.EndTime.Sub(appointment.StartTime).Minutes())
+
+		var bookedAt *time.Time
+		if appointment.Status == "booked" && !appointment.UpdatedAt.IsZero() {
+			bookedAt = &appointment.UpdatedAt
+		}
+
+		slots[i] = models.GeneratedSlotDetail{
+			ID:              appointment.ID,
+			StartTime:       appointment.StartTime,
+			EndTime:         appointment.EndTime,
+			Duration:        duration,
+			Status:          appointment.Status,
+			AppointmentType: appointment.AppointmentType,
+			Title:           appointment.Title,
+			PatientID:       appointment.PatientID,
+			PatientNotes:    appointment.PatientNotes,
+			BookedAt:        bookedAt,
+		}
+
+		// Подсчет статистики
+		switch appointment.Status {
+		case "available":
+			availableCount++
+		case "booked":
+			bookedCount++
+		case "canceled":
+			canceledCount++
+		}
+	}
+
+	// Подготавливаем метаданные расписания
+	scheduleMetadata := models.ScheduleMetadata{
+		ID:                schedule.ID,
+		Name:              schedule.Name,
+		WorkDays:          schedule.WorkDays(),
+		StartTime:         schedule.StartTime,
+		EndTime:           schedule.EndTime,
+		BreakStart:        schedule.BreakStart,
+		BreakEnd:          schedule.BreakEnd,
+		SlotDuration:      schedule.SlotDuration,
+		SlotTitle:         schedule.SlotTitle,
+		AppointmentFormat: schedule.AppointmentFormat,
+		IsActive:          schedule.IsActive,
+	}
+
+	// Подсчитываем количество дней
+	days := int(end.Sub(start).Hours()/24) + 1
+
+	// Подготавливаем период
+	period := models.Period{
+		StartDate: startDate,
+		EndDate:   endDate,
+		Days:      days,
+	}
+
+	// Подготавливаем сводку
+	summary := models.SlotsSummary{
+		TotalSlots:     len(slots),
+		AvailableSlots: availableCount,
+		BookedSlots:    bookedCount,
+		CanceledSlots:  canceledCount,
+	}
+
+	s.logInfo("Generated slots retrieved successfully", map[string]interface{}{
+		"doctorID":       doctorID.String(),
+		"scheduleID":     scheduleID.String(),
+		"totalSlots":     len(slots),
+		"availableSlots": availableCount,
+		"bookedSlots":    bookedCount,
+		"canceledSlots":  canceledCount,
+	})
+
+	return &models.GeneratedSlotsResponse{
+		Schedule: scheduleMetadata,
+		Period:   period,
+		Slots:    slots,
+		Summary:  summary,
+	}, nil
 }
