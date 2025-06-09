@@ -253,15 +253,24 @@ func (h *AppointmentHandler) ToggleSchedule(c echo.Context) error {
 		})
 	}
 
+	// Проверяем, есть ли тело запроса
 	var req models.ToggleScheduleRequest
+	var hasRequestBody bool
+
+	// Читаем содержимое запроса
 	if err := c.Bind(&req); err != nil {
+		// Если ошибка парсинга, это не обязательно означает отсутствие тела
 		return c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
 			Error:   "Invalid request body",
 		})
 	}
 
-	response, err := h.service.ToggleSchedule(userID, scheduleID, &req)
+	// Проверяем, был ли передан Content-Length или Content-Type
+	contentLength := c.Request().Header.Get("Content-Length")
+	hasRequestBody = contentLength != "" && contentLength != "0"
+
+	response, err := h.service.ToggleSchedule(userID, scheduleID, &req, hasRequestBody)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,

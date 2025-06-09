@@ -18,7 +18,7 @@ type AppointmentService interface {
 	GetDoctorSchedules(doctorID uuid.UUID) ([]*models.ScheduleResponse, error)
 	UpdateSchedule(doctorID, scheduleID uuid.UUID, req *models.UpdateScheduleRequest) (*models.ScheduleResponse, error)
 	DeleteSchedule(doctorID, scheduleID uuid.UUID) error
-	ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest) (*models.ScheduleResponse, error)
+	ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest, hasRequestBody bool) (*models.ScheduleResponse, error)
 	GenerateSlots(doctorID, scheduleID uuid.UUID, req *models.GenerateSlotsRequest) error
 
 	// Appointments
@@ -838,7 +838,7 @@ func (s *appointmentService) DeleteSchedule(doctorID, scheduleID uuid.UUID) erro
 	return nil
 }
 
-func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest) (*models.ScheduleResponse, error) {
+func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req *models.ToggleScheduleRequest, hasRequestBody bool) (*models.ScheduleResponse, error) {
 	schedule, err := s.repo.GetScheduleByID(scheduleID)
 	if err != nil {
 		return nil, fmt.Errorf("schedule not found: %w", err)
@@ -848,6 +848,32 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		return nil, errors.New("schedule doesn't belong to this doctor")
 	}
 
+	// Определяем желаемое состояние
+	var targetIsActive bool
+	var actionType string
+
+	if hasRequestBody {
+		// Если есть тело запроса - используем переданное значение
+		targetIsActive = req.IsActive
+		if req.IsActive && !schedule.IsActive {
+			actionType = "ACTIVATING_BY_REQUEST"
+		} else if !req.IsActive && schedule.IsActive {
+			actionType = "DEACTIVATING_BY_REQUEST"
+		} else if req.IsActive && schedule.IsActive {
+			actionType = "ALREADY_ACTIVE_BY_REQUEST"
+		} else {
+			actionType = "ALREADY_INACTIVE_BY_REQUEST"
+		}
+	} else {
+		// Если нет тела запроса - переключаем на противоположное
+		targetIsActive = !schedule.IsActive
+		if targetIsActive {
+			actionType = "AUTO_ACTIVATING"
+		} else {
+			actionType = "AUTO_DEACTIVATING"
+		}
+	}
+
 	// Детальное логирование для отладки
 	s.logInfo("ToggleSchedule request received", map[string]interface{}{
 		"doctorID":          doctorID.String(),
@@ -855,22 +881,14 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		"scheduleName":      schedule.Name,
 		"currentIsActive":   schedule.IsActive,
 		"currentIsDefault":  schedule.IsDefault,
+		"hasRequestBody":    hasRequestBody,
 		"requestedIsActive": req.IsActive,
-		"actionType": func() string {
-			if req.IsActive && !schedule.IsActive {
-				return "ACTIVATING"
-			} else if !req.IsActive && schedule.IsActive {
-				return "DEACTIVATING"
-			} else if req.IsActive && schedule.IsActive {
-				return "ALREADY_ACTIVE"
-			} else {
-				return "ALREADY_INACTIVE"
-			}
-		}(),
+		"targetIsActive":    targetIsActive,
+		"actionType":        actionType,
 	})
 
 	// Если активируем расписание - деактивируем все остальные
-	if req.IsActive && !schedule.IsActive {
+	if targetIsActive && !schedule.IsActive {
 		s.logInfo("Activating schedule - deactivating all other schedules", map[string]interface{}{
 			"doctorID":   doctorID.String(),
 			"scheduleID": scheduleID.String(),
@@ -891,10 +909,10 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		schedule.IsDefault = true
 	}
 
-	schedule.IsActive = req.IsActive
+	schedule.IsActive = targetIsActive
 
 	// Если деактивируем - убираем флаг основного
-	if !req.IsActive {
+	if !targetIsActive {
 		schedule.IsDefault = false
 	}
 
