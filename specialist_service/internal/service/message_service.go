@@ -43,21 +43,8 @@ func NewMessageService(
 		return nil, err
 	}
 
-	// Объявляем exchange
-	err = channel.ExchangeDeclare(
-		exchange, // имя
-		"topic",  // тип
-		true,     // durable
-		false,    // auto-deleted
-		false,    // internal
-		false,    // no-wait
-		nil,      // аргументы
-	)
-	if err != nil {
-		channel.Close()
-		conn.Close()
-		return nil, err
-	}
+	// Exchange "vitalem" уже существует, не пытаемся его переобъявить
+	// Это предотвращает ошибку ACCESS_REFUSED
 
 	// Объявляем только очередь для получения событий пользователей
 	_, err = channel.QueueDeclare(
