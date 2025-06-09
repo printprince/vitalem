@@ -61,8 +61,19 @@ func NewMessageService(
 		return nil, err
 	}
 
-	// НЕ создаем QueueBind - binding уже создан в identity_service
-	// Это предотвращает конфликты при множественных consumer'ах
+	// Создаем QueueBind для получения сообщений от exchange vitalem
+	err = channel.QueueBind(
+		userQueueName, // queue name
+		routingKey,    // routing key
+		exchange,      // exchange
+		false,         // no-wait
+		nil,           // arguments
+	)
+	if err != nil {
+		channel.Close()
+		conn.Close()
+		return nil, err
+	}
 
 	return &messageService{
 		conn:          conn,
