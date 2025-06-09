@@ -379,19 +379,16 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 
 	// Шаг 3: Если все проверки прошли - создаем ВСЕ слоты
 	s.logInfo("No conflicts found - creating all slots", map[string]interface{}{
-		"doctorID":   doctorID.String(),
-		"totalSlots": len(allSlotsToCreate),
+		"doctorID":          doctorID.String(),
+		"totalSlots":        len(allSlotsToCreate),
+		"appointmentFormat": schedule.AppointmentFormat,
 	})
 
 	totalSlotsCreated := 0
 	for _, slot := range allSlotsToCreate {
 		// Определяем тип записи исходя из формата расписания
-		appointmentType := "offline" // по умолчанию
-		if schedule.AppointmentFormat == "online" {
-			appointmentType = "online"
-		} else if schedule.AppointmentFormat == "both" {
-			appointmentType = "offline" // для "both" создаем offline по умолчанию, пациент сможет выбрать при бронировании
-		}
+		// Слоты должны наследовать точно такой же формат как у расписания
+		appointmentType := schedule.AppointmentFormat
 
 		appointment := &models.Appointment{
 			StartTime:       slot.startTime,
@@ -562,7 +559,17 @@ func (s *appointmentService) BookAppointment(patientID, appointmentID uuid.UUID,
 
 	appointmentType := req.AppointmentType
 	if appointmentType == "" {
-		appointmentType = "offline"
+		// Если тип не указан, выбираем по умолчанию в зависимости от слота
+		if appointment.AppointmentType == "both" {
+			appointmentType = "offline" // По умолчанию для "both" выбираем offline
+		} else {
+			appointmentType = appointment.AppointmentType // Используем тип слота
+		}
+	}
+
+	// Проверяем совместимость запрашиваемого типа со слотом
+	if !s.isAppointmentTypeCompatible(appointment.AppointmentType, appointmentType) {
+		return nil, fmt.Errorf("appointment type '%s' is not compatible with slot type '%s'", appointmentType, appointment.AppointmentType)
 	}
 
 	appointment.Book(patientID, appointmentType, req.PatientNotes)
@@ -572,6 +579,17 @@ func (s *appointmentService) BookAppointment(patientID, appointmentID uuid.UUID,
 	}
 
 	return s.appointmentToResponse(appointment), nil
+}
+
+// isAppointmentTypeCompatible проверяет совместимость типа записи со слотом
+func (s *appointmentService) isAppointmentTypeCompatible(slotType, requestedType string) bool {
+	// Если слот "both", то можно забронировать любой тип
+	if slotType == "both" {
+		return requestedType == "offline" || requestedType == "online"
+	}
+
+	// Для остальных случаев типы должны совпадать
+	return slotType == requestedType
 }
 
 func (s *appointmentService) CancelAppointment(appointmentID uuid.UUID) error {

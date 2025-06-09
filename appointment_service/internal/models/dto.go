@@ -108,7 +108,7 @@ type AvailableSlot struct {
 	EndTime         time.Time `json:"end_time"`
 	Duration        int       `json:"duration_minutes"`
 	Title           string    `json:"title"`
-	AppointmentType string    `json:"appointment_type"` // offline, online
+	AppointmentType string    `json:"appointment_type"` // "offline", "online", "both"
 }
 
 // === EXCEPTION DTOs ===
@@ -165,7 +165,7 @@ type GeneratedSlotDetail struct {
 	EndTime         time.Time `json:"end_time"`
 	Duration        int       `json:"duration_minutes"`
 	Status          string    `json:"status"`           // "available", "booked", "canceled"
-	AppointmentType string    `json:"appointment_type"` // "offline", "online"
+	AppointmentType string    `json:"appointment_type"` // "offline", "online", "both"
 	Title           string    `json:"title"`
 
 	// Информация о пациенте, если слот забронирован
