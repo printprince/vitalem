@@ -26,10 +26,11 @@ type DoctorSchedule struct {
 	BreakEnd   *string `gorm:"type:varchar(5)" json:"break_end,omitempty"`   // "13:00"
 
 	// Настройки слотов
-	SlotDuration int64  `gorm:"type:bigint;not null;default:30" json:"slot_duration"` // 30 минут
-	SlotTitle    string `gorm:"type:varchar(255)" json:"slot_title"`                  // "Консультация"
-	IsActive     bool   `gorm:"type:boolean;default:true" json:"is_active"`           // Активно ли расписание
-	IsDefault    bool   `gorm:"type:boolean;default:false" json:"is_default"`         // Основное расписание
+	SlotDuration      int64  `gorm:"type:bigint;not null;default:30" json:"slot_duration"`                  // 30 минут
+	SlotTitle         string `gorm:"type:varchar(255)" json:"slot_title"`                                   // "Консультация"
+	AppointmentFormat string `gorm:"type:varchar(10);not null;default:'offline'" json:"appointment_format"` // "offline", "online", "both"
+	IsActive          bool   `gorm:"type:boolean;default:true" json:"is_active"`                            // Активно ли расписание
+	IsDefault         bool   `gorm:"type:boolean;default:false" json:"is_default"`                          // Основное расписание
 
 	CreatedAt time.Time `gorm:"type:timestamp with time zone" json:"created_at"`
 	UpdatedAt time.Time `gorm:"type:timestamp with time zone" json:"updated_at"`

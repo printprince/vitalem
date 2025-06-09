@@ -10,46 +10,49 @@ import (
 
 // CreateScheduleRequest - создание расписания врача
 type CreateScheduleRequest struct {
-	Name         string  `json:"name" validate:"required,min=1,max=255"`                     // "Основное расписание"
-	WorkDays     []int   `json:"work_days" validate:"required,min=1,max=7,dive,min=1,max=7"` // [1,2,3,4,5]
-	StartTime    string  `json:"start_time" validate:"required,len=5"`                       // "09:00"
-	EndTime      string  `json:"end_time" validate:"required,len=5"`                         // "18:00"
-	BreakStart   *string `json:"break_start,omitempty" validate:"omitempty,len=5"`           // "12:00"
-	BreakEnd     *string `json:"break_end,omitempty" validate:"omitempty,len=5"`             // "13:00"
-	SlotDuration int64   `json:"slot_duration" validate:"required,min=15,max=180"`           // 30
-	SlotTitle    string  `json:"slot_title" validate:"max=255"`                              // "Консультация"
-	IsDefault    bool    `json:"is_default"`                                                 // Основное расписание
+	Name              string  `json:"name" validate:"required,min=1,max=255"`                           // "Основное расписание"
+	WorkDays          []int   `json:"work_days" validate:"required,min=1,max=7,dive,min=1,max=7"`       // [1,2,3,4,5]
+	StartTime         string  `json:"start_time" validate:"required,len=5"`                             // "09:00"
+	EndTime           string  `json:"end_time" validate:"required,len=5"`                               // "18:00"
+	BreakStart        *string `json:"break_start,omitempty" validate:"omitempty,len=5"`                 // "12:00"
+	BreakEnd          *string `json:"break_end,omitempty" validate:"omitempty,len=5"`                   // "13:00"
+	SlotDuration      int64   `json:"slot_duration" validate:"required,min=15,max=180"`                 // 30
+	SlotTitle         string  `json:"slot_title" validate:"max=255"`                                    // "Консультация"
+	AppointmentFormat string  `json:"appointment_format" validate:"required,oneof=offline online both"` // "offline", "online", "both"
+	IsDefault         bool    `json:"is_default"`                                                       // Основное расписание
 }
 
 // ScheduleResponse - ответ с расписанием
 type ScheduleResponse struct {
-	ID           uuid.UUID `json:"id"`
-	DoctorID     uuid.UUID `json:"doctor_id"`
-	Name         string    `json:"name"`
-	WorkDays     []int     `json:"work_days"`
-	StartTime    string    `json:"start_time"`
-	EndTime      string    `json:"end_time"`
-	BreakStart   *string   `json:"break_start,omitempty"`
-	BreakEnd     *string   `json:"break_end,omitempty"`
-	SlotDuration int64     `json:"slot_duration"`
-	SlotTitle    string    `json:"slot_title"`
-	IsActive     bool      `json:"is_active"`
-	IsDefault    bool      `json:"is_default"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID                uuid.UUID `json:"id"`
+	DoctorID          uuid.UUID `json:"doctor_id"`
+	Name              string    `json:"name"`
+	WorkDays          []int     `json:"work_days"`
+	StartTime         string    `json:"start_time"`
+	EndTime           string    `json:"end_time"`
+	BreakStart        *string   `json:"break_start,omitempty"`
+	BreakEnd          *string   `json:"break_end,omitempty"`
+	SlotDuration      int64     `json:"slot_duration"`
+	SlotTitle         string    `json:"slot_title"`
+	AppointmentFormat string    `json:"appointment_format"`
+	IsActive          bool      `json:"is_active"`
+	IsDefault         bool      `json:"is_default"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 // UpdateScheduleRequest - обновление расписания врача
 type UpdateScheduleRequest struct {
-	Name         *string `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
-	WorkDays     *[]int  `json:"work_days,omitempty" validate:"omitempty,min=1,max=7,dive,min=1,max=7"`
-	StartTime    *string `json:"start_time,omitempty" validate:"omitempty,len=5"`
-	EndTime      *string `json:"end_time,omitempty" validate:"omitempty,len=5"`
-	BreakStart   *string `json:"break_start,omitempty" validate:"omitempty,len=5"`
-	BreakEnd     *string `json:"break_end,omitempty" validate:"omitempty,len=5"`
-	SlotDuration *int64  `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
-	SlotTitle    *string `json:"slot_title,omitempty" validate:"omitempty,max=255"`
-	IsDefault    *bool   `json:"is_default,omitempty"`
+	Name              *string `json:"name,omitempty" validate:"omitempty,min=1,max=255"`
+	WorkDays          *[]int  `json:"work_days,omitempty" validate:"omitempty,min=1,max=7,dive,min=1,max=7"`
+	StartTime         *string `json:"start_time,omitempty" validate:"omitempty,len=5"`
+	EndTime           *string `json:"end_time,omitempty" validate:"omitempty,len=5"`
+	BreakStart        *string `json:"break_start,omitempty" validate:"omitempty,len=5"`
+	BreakEnd          *string `json:"break_end,omitempty" validate:"omitempty,len=5"`
+	SlotDuration      *int64  `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
+	SlotTitle         *string `json:"slot_title,omitempty" validate:"omitempty,max=255"`
+	AppointmentFormat *string `json:"appointment_format,omitempty" validate:"omitempty,oneof=offline online both"`
+	IsDefault         *bool   `json:"is_default,omitempty"`
 }
 
 // ToggleScheduleRequest - активация/деактивация расписания

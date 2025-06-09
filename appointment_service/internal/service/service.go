@@ -92,16 +92,17 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 	}
 
 	schedule := &models.DoctorSchedule{
-		DoctorID:     doctorID,
-		Name:         req.Name,
-		StartTime:    req.StartTime,
-		EndTime:      req.EndTime,
-		BreakStart:   req.BreakStart,
-		BreakEnd:     req.BreakEnd,
-		SlotDuration: req.SlotDuration,
-		SlotTitle:    req.SlotTitle,
-		IsActive:     true, // Новое расписание всегда активно
-		IsDefault:    true, // И всегда основное (поскольку единственное активное)
+		DoctorID:          doctorID,
+		Name:              req.Name,
+		StartTime:         req.StartTime,
+		EndTime:           req.EndTime,
+		BreakStart:        req.BreakStart,
+		BreakEnd:          req.BreakEnd,
+		SlotDuration:      req.SlotDuration,
+		SlotTitle:         req.SlotTitle,
+		AppointmentFormat: req.AppointmentFormat,
+		IsActive:          true, // Новое расписание всегда активно
+		IsDefault:         true, // И всегда основное (поскольку единственное активное)
 	}
 
 	// Устанавливаем рабочие дни через новый метод
@@ -386,13 +387,22 @@ func (s *appointmentService) GenerateSlots(doctorID, scheduleID uuid.UUID, req *
 
 	totalSlotsCreated := 0
 	for _, slot := range allSlotsToCreate {
+		// Определяем тип записи исходя из формата расписания
+		appointmentType := "offline" // по умолчанию
+		if schedule.AppointmentFormat == "online" {
+			appointmentType = "online"
+		} else if schedule.AppointmentFormat == "both" {
+			appointmentType = "offline" // для "both" создаем offline по умолчанию, пациент сможет выбрать при бронировании
+		}
+
 		appointment := &models.Appointment{
-			StartTime:  slot.startTime,
-			EndTime:    slot.endTime,
-			DoctorID:   schedule.DoctorID,
-			Title:      schedule.SlotTitle,
-			Status:     "available",
-			ScheduleID: &schedule.ID,
+			StartTime:       slot.startTime,
+			EndTime:         slot.endTime,
+			DoctorID:        schedule.DoctorID,
+			Title:           schedule.SlotTitle,
+			Status:          "available",
+			AppointmentType: appointmentType,
+			ScheduleID:      &schedule.ID,
 		}
 
 		if err := s.repo.CreateAppointment(appointment); err != nil {
@@ -673,20 +683,21 @@ func (s *appointmentService) GetDoctorExceptions(doctorID uuid.UUID, startDate, 
 
 func (s *appointmentService) scheduleToResponse(schedule *models.DoctorSchedule) *models.ScheduleResponse {
 	return &models.ScheduleResponse{
-		ID:           schedule.ID,
-		DoctorID:     schedule.DoctorID,
-		Name:         schedule.Name,
-		WorkDays:     schedule.WorkDays(),
-		StartTime:    schedule.StartTime,
-		EndTime:      schedule.EndTime,
-		BreakStart:   schedule.BreakStart,
-		BreakEnd:     schedule.BreakEnd,
-		SlotDuration: schedule.SlotDuration,
-		SlotTitle:    schedule.SlotTitle,
-		IsActive:     schedule.IsActive,
-		IsDefault:    schedule.IsDefault,
-		CreatedAt:    schedule.CreatedAt,
-		UpdatedAt:    schedule.UpdatedAt,
+		ID:                schedule.ID,
+		DoctorID:          schedule.DoctorID,
+		Name:              schedule.Name,
+		WorkDays:          schedule.WorkDays(),
+		StartTime:         schedule.StartTime,
+		EndTime:           schedule.EndTime,
+		BreakStart:        schedule.BreakStart,
+		BreakEnd:          schedule.BreakEnd,
+		SlotDuration:      schedule.SlotDuration,
+		SlotTitle:         schedule.SlotTitle,
+		AppointmentFormat: schedule.AppointmentFormat,
+		IsActive:          schedule.IsActive,
+		IsDefault:         schedule.IsDefault,
+		CreatedAt:         schedule.CreatedAt,
+		UpdatedAt:         schedule.UpdatedAt,
 	}
 }
 
@@ -759,6 +770,9 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 	}
 	if req.SlotTitle != nil {
 		schedule.SlotTitle = *req.SlotTitle
+	}
+	if req.AppointmentFormat != nil {
+		schedule.AppointmentFormat = *req.AppointmentFormat
 	}
 	if req.IsDefault != nil {
 		// Если устанавливаем как основное, деактивируем другие основные
