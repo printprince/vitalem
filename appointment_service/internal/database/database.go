@@ -88,45 +88,83 @@ func migrateScheduleWorkDays(db *gorm.DB) error {
 	}
 
 	if workDaysColumnExists && !workDaysJsonColumnExists {
-		log.Println("🔄 Converting work_days integer[] to work_days_json text...")
+		log.Println("🔄 Recreating doctor_schedules table with correct structure...")
 
-		// 1. Добавляем новый столбец work_days_json
-		err = db.Exec("ALTER TABLE doctor_schedules ADD COLUMN work_days_json TEXT").Error
-		if err != nil {
-			return fmt.Errorf("failed to add work_days_json column: %w", err)
-		}
-
-		// 2. Конвертируем данные из work_days в work_days_json
+		// Сохраняем данные во временную таблицу
 		err = db.Exec(`
-			UPDATE doctor_schedules 
-			SET work_days_json = (
-				SELECT json_agg(unnest)::text 
-				FROM unnest(work_days)
-			) 
-			WHERE work_days IS NOT NULL AND array_length(work_days, 1) > 0`).Error
+			CREATE TABLE doctor_schedules_backup AS 
+			SELECT 
+				id, 
+				doctor_id, 
+				name, 
+				(SELECT json_agg(unnest)::text FROM unnest(work_days)) as work_days_json,
+				start_time, 
+				end_time, 
+				break_start, 
+				break_end, 
+				slot_duration, 
+				slot_title, 
+				is_active, 
+				is_default, 
+				created_at, 
+				updated_at 
+			FROM doctor_schedules
+		`).Error
 		if err != nil {
-			return fmt.Errorf("failed to convert work_days data: %w", err)
+			return fmt.Errorf("failed to backup data: %w", err)
 		}
 
-		// 3. Устанавливаем значение по умолчанию для пустых массивов
-		err = db.Exec("UPDATE doctor_schedules SET work_days_json = '[]' WHERE work_days_json IS NULL").Error
+		// Удаляем старую таблицу
+		err = db.Exec("DROP TABLE doctor_schedules").Error
 		if err != nil {
-			return fmt.Errorf("failed to set default work_days_json values: %w", err)
+			return fmt.Errorf("failed to drop old table: %w", err)
 		}
 
-		// 4. Добавляем NOT NULL constraint
-		err = db.Exec("ALTER TABLE doctor_schedules ALTER COLUMN work_days_json SET NOT NULL").Error
+		// Создаем новую таблицу с правильной структурой
+		err = db.Exec(`
+			CREATE TABLE doctor_schedules (
+				id UUID PRIMARY KEY,
+				doctor_id UUID NOT NULL,
+				name VARCHAR(255) NOT NULL,
+				work_days_json TEXT NOT NULL,
+				start_time VARCHAR(5) NOT NULL,
+				end_time VARCHAR(5) NOT NULL,
+				break_start VARCHAR(5),
+				break_end VARCHAR(5),
+				slot_duration INTEGER NOT NULL DEFAULT 30,
+				slot_title VARCHAR(255),
+				is_active BOOLEAN DEFAULT true,
+				is_default BOOLEAN DEFAULT false,
+				created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+				updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+			)
+		`).Error
 		if err != nil {
-			return fmt.Errorf("failed to set NOT NULL constraint: %w", err)
+			return fmt.Errorf("failed to create new table: %w", err)
 		}
 
-		// 5. Удаляем старый столбец work_days
-		err = db.Exec("ALTER TABLE doctor_schedules DROP COLUMN work_days").Error
+		// Восстанавливаем данные
+		err = db.Exec(`
+			INSERT INTO doctor_schedules 
+			SELECT * FROM doctor_schedules_backup
+		`).Error
 		if err != nil {
-			return fmt.Errorf("failed to drop work_days column: %w", err)
+			return fmt.Errorf("failed to restore data: %w", err)
 		}
 
-		log.Println("✅ Successfully migrated work_days to work_days_json")
+		// Удаляем временную таблицу
+		err = db.Exec("DROP TABLE doctor_schedules_backup").Error
+		if err != nil {
+			log.Printf("⚠️ Failed to drop backup table: %v", err)
+		}
+
+		// Создаем индекс
+		err = db.Exec("CREATE INDEX IF NOT EXISTS idx_schedules_doctor_active ON doctor_schedules(doctor_id, is_active)").Error
+		if err != nil {
+			log.Printf("⚠️ Failed to create index: %v", err)
+		}
+
+		log.Println("✅ Successfully recreated doctor_schedules table with work_days_json")
 	} else if workDaysJsonColumnExists && !workDaysColumnExists {
 		log.Println("📝 Migration already completed - work_days_json column exists")
 	} else if !workDaysColumnExists && !workDaysJsonColumnExists {
