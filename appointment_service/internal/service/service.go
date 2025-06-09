@@ -102,7 +102,6 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 		SlotTitle:         req.SlotTitle,
 		AppointmentFormat: req.AppointmentFormat,
 		IsActive:          true, // Новое расписание всегда активно
-		IsDefault:         true, // И всегда основное (поскольку единственное активное)
 	}
 
 	// Устанавливаем рабочие дни через новый метод
@@ -120,7 +119,6 @@ func (s *appointmentService) CreateSchedule(doctorID uuid.UUID, req *models.Crea
 		"doctorID":   doctorID.String(),
 		"scheduleID": schedule.ID.String(),
 		"isActive":   schedule.IsActive,
-		"isDefault":  schedule.IsDefault,
 	})
 
 	return s.scheduleToResponse(schedule), nil
@@ -205,7 +203,6 @@ func (s *appointmentService) deactivateOtherSchedules(doctorID uuid.UUID, exclud
 
 		if schedule.IsActive {
 			schedule.IsActive = false
-			schedule.IsDefault = false
 			if err := s.repo.UpdateSchedule(schedule); err != nil {
 				return fmt.Errorf("failed to deactivate schedule %s: %w", schedule.Name, err)
 			}
@@ -695,7 +692,6 @@ func (s *appointmentService) scheduleToResponse(schedule *models.DoctorSchedule)
 		SlotTitle:         schedule.SlotTitle,
 		AppointmentFormat: schedule.AppointmentFormat,
 		IsActive:          schedule.IsActive,
-		IsDefault:         schedule.IsDefault,
 		CreatedAt:         schedule.CreatedAt,
 		UpdatedAt:         schedule.UpdatedAt,
 	}
@@ -773,19 +769,6 @@ func (s *appointmentService) UpdateSchedule(doctorID, scheduleID uuid.UUID, req 
 	}
 	if req.AppointmentFormat != nil {
 		schedule.AppointmentFormat = *req.AppointmentFormat
-	}
-	if req.IsDefault != nil {
-		// Если устанавливаем как основное, деактивируем другие основные
-		if *req.IsDefault {
-			schedules, _ := s.repo.GetDoctorSchedules(doctorID)
-			for _, otherSchedule := range schedules {
-				if otherSchedule.IsDefault && otherSchedule.ID != scheduleID {
-					otherSchedule.IsDefault = false
-					s.repo.UpdateSchedule(otherSchedule)
-				}
-			}
-		}
-		schedule.IsDefault = *req.IsDefault
 	}
 
 	// Проверяем конфликты если расписание активно и изменились критичные поля
@@ -921,7 +904,6 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 		"scheduleID":        scheduleID.String(),
 		"scheduleName":      schedule.Name,
 		"currentIsActive":   schedule.IsActive,
-		"currentIsDefault":  schedule.IsDefault,
 		"hasRequestBody":    hasRequestBody,
 		"requestedIsActive": req.IsActive,
 		"targetIsActive":    targetIsActive,
@@ -945,27 +927,18 @@ func (s *appointmentService) ToggleSchedule(doctorID, scheduleID uuid.UUID, req 
 			})
 			return nil, fmt.Errorf("failed to deactivate other schedules: %w", err)
 		}
-
-		// Устанавливаем это расписание как основное при активации
-		schedule.IsDefault = true
 	}
 
 	schedule.IsActive = targetIsActive
-
-	// Если деактивируем - убираем флаг основного
-	if !targetIsActive {
-		schedule.IsDefault = false
-	}
 
 	if err := s.repo.UpdateSchedule(schedule); err != nil {
 		return nil, fmt.Errorf("failed to toggle schedule: %w", err)
 	}
 
 	s.logInfo("Schedule toggled successfully", map[string]interface{}{
-		"doctorID":       doctorID.String(),
-		"scheduleID":     scheduleID.String(),
-		"finalIsActive":  schedule.IsActive,
-		"finalIsDefault": schedule.IsDefault,
+		"doctorID":      doctorID.String(),
+		"scheduleID":    scheduleID.String(),
+		"finalIsActive": schedule.IsActive,
 		"operation": func() string {
 			if schedule.IsActive {
 				return "ACTIVATED"

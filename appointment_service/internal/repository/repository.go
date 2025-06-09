@@ -53,7 +53,7 @@ func (r *appointmentRepository) CreateSchedule(schedule *models.DoctorSchedule) 
 func (r *appointmentRepository) GetDoctorSchedules(doctorID uuid.UUID) ([]*models.DoctorSchedule, error) {
 	var schedules []*models.DoctorSchedule
 	err := r.db.Where("doctor_id = ?", doctorID).
-		Order("is_active DESC, is_default DESC, created_at DESC").
+		Order("is_active DESC, created_at DESC").
 		Find(&schedules).Error
 	return schedules, err
 }
@@ -77,10 +77,8 @@ func (r *appointmentRepository) DeleteSchedule(id uuid.UUID) error {
 		return err
 	}
 
-	// Затем деактивируем расписание
-	return r.db.Model(&models.DoctorSchedule{}).
-		Where("id = ?", id).
-		Update("is_active", false).Error
+	// Затем физически удаляем расписание из базы данных
+	return r.db.Delete(&models.DoctorSchedule{}, "id = ?", id).Error
 }
 
 // === APPOINTMENTS ===

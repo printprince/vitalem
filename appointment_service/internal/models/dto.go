@@ -19,7 +19,6 @@ type CreateScheduleRequest struct {
 	SlotDuration      int64   `json:"slot_duration" validate:"required,min=15,max=180"`                 // 30
 	SlotTitle         string  `json:"slot_title" validate:"max=255"`                                    // "Консультация"
 	AppointmentFormat string  `json:"appointment_format" validate:"required,oneof=offline online both"` // "offline", "online", "both"
-	IsDefault         bool    `json:"is_default"`                                                       // Основное расписание
 }
 
 // ScheduleResponse - ответ с расписанием
@@ -36,7 +35,6 @@ type ScheduleResponse struct {
 	SlotTitle         string    `json:"slot_title"`
 	AppointmentFormat string    `json:"appointment_format"`
 	IsActive          bool      `json:"is_active"`
-	IsDefault         bool      `json:"is_default"`
 	CreatedAt         time.Time `json:"created_at"`
 	UpdatedAt         time.Time `json:"updated_at"`
 }
@@ -52,7 +50,6 @@ type UpdateScheduleRequest struct {
 	SlotDuration      *int64  `json:"slot_duration,omitempty" validate:"omitempty,min=15,max=180"`
 	SlotTitle         *string `json:"slot_title,omitempty" validate:"omitempty,max=255"`
 	AppointmentFormat *string `json:"appointment_format,omitempty" validate:"omitempty,oneof=offline online both"`
-	IsDefault         *bool   `json:"is_default,omitempty"`
 }
 
 // ToggleScheduleRequest - активация/деактивация расписания

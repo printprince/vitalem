@@ -30,7 +30,6 @@ type DoctorSchedule struct {
 	SlotTitle         string `gorm:"type:varchar(255)" json:"slot_title"`                                   // "Консультация"
 	AppointmentFormat string `gorm:"type:varchar(10);not null;default:'offline'" json:"appointment_format"` // "offline", "online", "both"
 	IsActive          bool   `gorm:"type:boolean;default:true" json:"is_active"`                            // Активно ли расписание
-	IsDefault         bool   `gorm:"type:boolean;default:false" json:"is_default"`                          // Основное расписание
 
 	CreatedAt time.Time `gorm:"type:timestamp with time zone" json:"created_at"`
 	UpdatedAt time.Time `gorm:"type:timestamp with time zone" json:"updated_at"`
