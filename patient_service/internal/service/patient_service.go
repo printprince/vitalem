@@ -117,9 +117,12 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 	// Обновляем все поля пациента из запроса
 	// Жёсткий перезапись всех полей без проверки на nil
 	// TODO: Добавить частичное обновление с проверкой заполненности полей
-	patient.Name = req.Name
+	patient.FirstName = req.FirstName
+	patient.MiddleName = req.MiddleName
+	patient.LastName = req.LastName
+	patient.Address = req.Address
+	patient.AvatarURL = req.AvatarURL
 	patient.IIN = req.IIN
-	patient.Surname = req.Surname
 	patient.DateOfBirth = req.DateOfBirth.Time
 	patient.Gender = req.Gender
 	patient.Email = req.Email
@@ -148,7 +151,7 @@ func (s *patientService) UpdatePatient(ctx context.Context, id uuid.UUID, req *m
 }
 
 // UpdatePatientProfile - обновление или создание профиля пациента по UserID
-// Умная логика: если профиль существует - обновляет, если нет - создает новый
+// Если профиль существует - обновляет, если нет - создает новый
 // Используется для второго этапа регистрации, когда юзер уже создан в identity_service,
 // но еще не заполнил свой медицинский профиль
 func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.UUID, req *models.PatientCreateRequest) (*models.PatientResponse, error) {
@@ -187,11 +190,20 @@ func (s *patientService) UpdatePatientProfile(ctx context.Context, userID uuid.U
 
 	// Обновляем поля существующего профиля
 	// Обновляем только НЕ пустые поля из запроса (гибкое обновление)
-	if req.Name != "" {
-		patient.Name = req.Name
+	if req.FirstName != "" {
+		patient.FirstName = req.FirstName
 	}
-	if req.Surname != "" {
-		patient.Surname = req.Surname
+	if req.MiddleName != "" {
+		patient.MiddleName = req.MiddleName
+	}
+	if req.LastName != "" {
+		patient.LastName = req.LastName
+	}
+	if req.Address != "" {
+		patient.Address = req.Address
+	}
+	if req.AvatarURL != "" {
+		patient.AvatarURL = req.AvatarURL
 	}
 	if !req.DateOfBirth.IsZero() {
 		patient.DateOfBirth = req.DateOfBirth.Time

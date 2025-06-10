@@ -22,11 +22,9 @@ import (
 var loggerClient *logger.Client
 
 func main() {
-	// Загрузка конфигурации
-	logInfo("🚀 Starting Appointment Service...")
 	cfg, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("❌ Failed to load config: %v", err)
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	// Инициализация логгера
@@ -51,7 +49,7 @@ func main() {
 		}
 	}
 
-	logInfo("📝 Loaded config: %s v%s (%s)", cfg.App.Name, cfg.App.Version, cfg.App.Environment)
+	logInfo("Loaded config: %s v%s (%s)", cfg.App.Name, cfg.App.Version, cfg.App.Environment)
 
 	// Подключение к базе данных
 	db, err := database.ConnectDB(cfg)
@@ -59,7 +57,7 @@ func main() {
 		logError("Failed to connect to database", map[string]interface{}{
 			"error": err.Error(),
 		})
-		log.Fatalf("❌ Failed to connect to database: %v", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
 	// Выполнение миграций
@@ -67,7 +65,7 @@ func main() {
 		logError("Failed to run migrations", map[string]interface{}{
 			"error": err.Error(),
 		})
-		log.Fatalf("❌ Failed to run migrations: %v", err)
+		log.Fatalf("Failed to run migrations: %v", err)
 	}
 
 	// Создание индексов
@@ -75,7 +73,7 @@ func main() {
 		logError("Failed to create indexes", map[string]interface{}{
 			"error": err.Error(),
 		})
-		log.Printf("⚠️ Failed to create indexes: %v", err)
+		log.Printf("Failed to create indexes: %v", err)
 	}
 
 	// Инициализация слоев
@@ -105,15 +103,15 @@ func main() {
 
 	// Запуск сервера
 	serverAddr := cfg.Server.Host + ":" + cfg.Server.Port
-	logInfo("🎯 Server starting on %s", serverAddr)
-	logInfo("📋 Health check: http://%s/health", serverAddr)
-	logInfo("📚 API documentation: http://%s/api", serverAddr)
+	logInfo("Server starting on %s", serverAddr)
+	logInfo("Health check: http://%s/health", serverAddr)
+	logInfo("API documentation: http://%s/api", serverAddr)
 
 	if err := e.Start(serverAddr); err != nil && err != http.ErrServerClosed {
 		logError("Failed to start server", map[string]interface{}{
 			"error": err.Error(),
 		})
-		log.Fatalf("❌ Failed to start server: %v", err)
+		log.Fatalf("Failed to start server: %v", err)
 	}
 }
 

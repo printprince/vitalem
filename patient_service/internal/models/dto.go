@@ -41,8 +41,11 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 type PatientCreateRequest struct {
 	UserID              uuid.UUID `json:"user_id" binding:"required"`
 	IIN                 *string   `json:"iin"`
-	Name                string    `json:"name"`
-	Surname             string    `json:"surname"`
+	FirstName           string    `json:"first_name"`
+	MiddleName          string    `json:"middle_name"`
+	LastName            string    `json:"last_name"`
+	Address             string    `json:"address"`
+	AvatarURL           string    `json:"avatar_url" binding:"omitempty,url"` // URL аватара, может быть пустым
 	DateOfBirth         Date      `json:"date_of_birth"`
 	Gender              string    `json:"gender"`
 	Email               string    `json:"email" binding:"required,email"`
@@ -63,8 +66,11 @@ type PatientResponse struct {
 	ID                  uuid.UUID `json:"id"`
 	UserID              uuid.UUID `json:"user_id"`
 	IIN                 *string   `json:"iin"`
-	Name                string    `json:"name"`
-	Surname             string    `json:"surname"`
+	FirstName           string    `json:"first_name"`
+	MiddleName          string    `json:"middle_name"`
+	LastName            string    `json:"last_name"`
+	Address             string    `json:"address"`
+	AvatarURL           string    `json:"avatar_url"`
 	DateOfBirth         time.Time `json:"date_of_birth"`
 	Gender              string    `json:"gender"`
 	Email               string    `json:"email"`
@@ -87,8 +93,11 @@ func (r *PatientCreateRequest) ToPatient() *Patient {
 	return &Patient{
 		UserID:              r.UserID,
 		IIN:                 r.IIN,
-		Name:                r.Name,
-		Surname:             r.Surname,
+		FirstName:           r.FirstName,
+		MiddleName:          r.MiddleName,
+		LastName:            r.LastName,
+		Address:             r.Address,
+		AvatarURL:           r.AvatarURL,
 		DateOfBirth:         r.DateOfBirth.Time,
 		Gender:              r.Gender,
 		Email:               r.Email,
@@ -111,8 +120,11 @@ func (p *Patient) ToPatientResponse() *PatientResponse {
 		ID:                  p.ID,
 		UserID:              p.UserID,
 		IIN:                 p.IIN,
-		Name:                p.Name,
-		Surname:             p.Surname,
+		FirstName:           p.FirstName,
+		MiddleName:          p.MiddleName,
+		LastName:            p.LastName,
+		Address:             p.Address,
+		AvatarURL:           p.AvatarURL,
 		DateOfBirth:         p.DateOfBirth,
 		Gender:              p.Gender,
 		Email:               p.Email,

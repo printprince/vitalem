@@ -54,8 +54,11 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 	// Пользователь заполнит полный профиль через API позже
 	patient := &models.PatientCreateRequest{
 		UserID:              userID,
-		Name:                "Не указано",
-		Surname:             "Не указана",
+		FirstName:           "Не указано",
+		MiddleName:          "Не указано",
+		LastName:            "Не указана",
+		Address:             "Не указан",
+		AvatarURL:           "empty",
 		DateOfBirth:         models.Date{Time: time.Now()},
 		Gender:              "Не указан",
 		Email:               event.Email,

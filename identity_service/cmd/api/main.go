@@ -64,7 +64,7 @@ func main() {
 		})
 
 		if err != nil {
-			log.Printf("Ошибка отправки лога: %v", err)
+			log.Printf("Ошибка отправки лога в logger_service: %v", err)
 		} else {
 			log.Printf("Логирование через logger_service настроено: %s", loggerServiceURL)
 		}

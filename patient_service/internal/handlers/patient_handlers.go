@@ -36,6 +36,7 @@ func (h *PatientHandlers) RegisterProtectedRoutes(g *echo.Group) {
 	patients.POST("", h.CreatePatient)
 	patients.PUT("/:id", h.UpdatePatient)
 	patients.DELETE("/:id", h.DeletePatient)
+	patients.GET("/:id", h.GetPatientByID)
 
 	// Маршрут для получения всех пациентов (только для докторов)
 	g.GET("/patients", h.GetAllPatients)
