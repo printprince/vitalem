@@ -24,16 +24,16 @@ const (
 // TODO: В будущем при увеличении базы вынести диагнозы, аллергены и диеты
 // в отдельные таблицы с many-to-many связями для нормализации БД.
 type Patient struct {
-	ID                  uuid.UUID      `gorm:"type:uuid;primary_key"`
-	UserID              uuid.UUID      `gorm:"type:uuid;index"` // Связь с юзером из identity_service
-	FirstName           string         `gorm:"type:varchar(100)"`
-	MiddleName          string         `gorm:"type:varchar(100)"`
-	LastName            string         `gorm:"type:varchar(100)"`
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	UserID              uuid.UUID      `gorm:"type:uuid;not null;unique" json:"user_id"`
+	FirstName           string         `gorm:"type:varchar(100);not null" json:"first_name"`
+	MiddleName          string         `gorm:"type:varchar(100)" json:"middle_name"`
+	LastName            string         `gorm:"type:varchar(100);not null" json:"last_name"`
 	IIN                 *string        `gorm:"type:varchar(12);uniqueIndex:idx_patients_iin,where:iin IS NOT NULL"` // ИИН должен быть уникальным, но может быть NULL
 	DateOfBirth         time.Time      `gorm:"type:date"`
 	Gender              string         `gorm:"type:varchar(20)"`
-	Email               string         `gorm:"type:varchar(255);uniqueIndex"` // Уникальный для рассылок
-	Phone               string         `gorm:"type:varchar(20)"`
+	Email               string         `gorm:"type:varchar(255);not null" json:"email"`
+	Phone               string         `gorm:"type:varchar(20)" json:"phone"`
 	Height              float64        `gorm:"type:decimal(5,2)"`   // в сантиметрах - можем хранить до 999.99
 	Weight              float64        `gorm:"type:decimal(5,2)"`   // в килограммах - аналогично до 999.99
 	PhysActivity        string         `gorm:"type:varchar(50)"`    // Из констант выше
@@ -43,8 +43,12 @@ type Patient struct {
 	AdditionalAllergens pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные аллергены
 	Diet                pq.StringArray `gorm:"type:varchar(255)[]"` // Диеты из справочника
 	AdditionalDiets     pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные диеты
-	CreatedAt           time.Time      // Стандартные GORM метки времени
-	UpdatedAt           time.Time      // Автоматически обновляется при изменении
+	Address             string         `gorm:"type:text" json:"address"`
+	AvatarURL           string         `gorm:"type:varchar(255)" json:"avatar_url"`
+	Description         string         `gorm:"type:text" json:"description"`
+	CreatedAt           time.Time      `json:"created_at"`
+	UpdatedAt           time.Time      `json:"updated_at"`
+	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
 // BeforeCreate - хук GORM для автогенерации UUID перед вставкой в базу
@@ -59,5 +63,8 @@ func (p *Patient) BeforeCreate(tx *gorm.DB) error {
 
 // FullName - возвращает полное имя пациента
 func (p *Patient) FullName() string {
-	return p.Surname + " " + p.Name
+	if p.MiddleName != "" {
+		return p.FirstName + " " + p.MiddleName + " " + p.LastName
+	}
+	return p.FirstName + " " + p.LastName
 }
