@@ -45,7 +45,6 @@ type Patient struct {
 	AdditionalDiets     pq.StringArray `gorm:"type:varchar(255)[]"` // Произвольные диеты
 	Address             string         `gorm:"type:text" json:"address"`
 	AvatarURL           string         `gorm:"type:varchar(255)" json:"avatar_url"`
-	Description         string         `gorm:"type:text" json:"description"`
 	CreatedAt           time.Time      `json:"created_at"`
 	UpdatedAt           time.Time      `json:"updated_at"`
 	DeletedAt           gorm.DeletedAt `gorm:"index" json:"-"`

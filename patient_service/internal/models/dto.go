@@ -38,62 +38,58 @@ func (d *Date) UnmarshalJSON(data []byte) error {
 
 // PatientCreateRequest структура для создания пациента
 type PatientCreateRequest struct {
-	UserID      uuid.UUID `json:"user_id" validate:"required"`
-	FirstName   string    `json:"first_name" validate:"required"`
-	MiddleName  string    `json:"middle_name"`
-	LastName    string    `json:"last_name" validate:"required"`
-	Email       string    `json:"email" validate:"required,email"`
-	Phone       string    `json:"phone"`
-	Address     string    `json:"address"`
-	AvatarURL   string    `json:"avatar_url"`
-	Description string    `json:"description"`
+	UserID     uuid.UUID `json:"user_id" validate:"required"`
+	FirstName  string    `json:"first_name" validate:"required"`
+	MiddleName string    `json:"middle_name"`
+	LastName   string    `json:"last_name" validate:"required"`
+	Email      string    `json:"email" validate:"required,email"`
+	Phone      string    `json:"phone"`
+	Address    string    `json:"address"`
+	AvatarURL  string    `json:"avatar_url"`
 }
 
 // PatientResponse структура для ответа с данными пациента
 type PatientResponse struct {
-	ID          uuid.UUID `json:"id"`
-	UserID      uuid.UUID `json:"user_id"`
-	FirstName   string    `json:"first_name"`
-	MiddleName  string    `json:"middle_name"`
-	LastName    string    `json:"last_name"`
-	Email       string    `json:"email"`
-	Phone       string    `json:"phone"`
-	Address     string    `json:"address"`
-	AvatarURL   string    `json:"avatar_url"`
-	Description string    `json:"description"`
-	CreatedAt   string    `json:"created_at"`
-	UpdatedAt   string    `json:"updated_at"`
+	ID         uuid.UUID `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	FirstName  string    `json:"first_name"`
+	MiddleName string    `json:"middle_name"`
+	LastName   string    `json:"last_name"`
+	Email      string    `json:"email"`
+	Phone      string    `json:"phone"`
+	Address    string    `json:"address"`
+	AvatarURL  string    `json:"avatar_url"`
+	CreatedAt  string    `json:"created_at"`
+	UpdatedAt  string    `json:"updated_at"`
 }
 
 // ToPatient конвертирует PatientCreateRequest в Patient
 func (r *PatientCreateRequest) ToPatient() *Patient {
 	return &Patient{
-		UserID:      r.UserID,
-		FirstName:   r.FirstName,
-		MiddleName:  r.MiddleName,
-		LastName:    r.LastName,
-		Email:       r.Email,
-		Phone:       r.Phone,
-		Address:     r.Address,
-		AvatarURL:   r.AvatarURL,
-		Description: r.Description,
+		UserID:     r.UserID,
+		FirstName:  r.FirstName,
+		MiddleName: r.MiddleName,
+		LastName:   r.LastName,
+		Email:      r.Email,
+		Phone:      r.Phone,
+		Address:    r.Address,
+		AvatarURL:  r.AvatarURL,
 	}
 }
 
 // ToPatientResponse конвертирует Patient в PatientResponse
 func ToPatientResponse(p *Patient) *PatientResponse {
 	return &PatientResponse{
-		ID:          p.ID,
-		UserID:      p.UserID,
-		FirstName:   p.FirstName,
-		MiddleName:  p.MiddleName,
-		LastName:    p.LastName,
-		Email:       p.Email,
-		Phone:       p.Phone,
-		Address:     p.Address,
-		AvatarURL:   p.AvatarURL,
-		Description: p.Description,
-		CreatedAt:   p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		UpdatedAt:   p.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		ID:         p.ID,
+		UserID:     p.UserID,
+		FirstName:  p.FirstName,
+		MiddleName: p.MiddleName,
+		LastName:   p.LastName,
+		Email:      p.Email,
+		Phone:      p.Phone,
+		Address:    p.Address,
+		AvatarURL:  p.AvatarURL,
+		CreatedAt:  p.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt:  p.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 }
