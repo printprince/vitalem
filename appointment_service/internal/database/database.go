@@ -68,7 +68,7 @@ func RunMigrations(db *gorm.DB) error {
 	tables := []string{"doctor_schedules", "schedule_exceptions", "appointments"}
 	for _, tableName := range tables {
 		var exists bool
-		err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1)", tableName).Scan(&exists).Error
+		err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND table_type = 'BASE TABLE')", tableName).Scan(&exists).Error
 		if err != nil {
 			log.Printf("Failed to check table %s: %v", tableName, err)
 			continue
