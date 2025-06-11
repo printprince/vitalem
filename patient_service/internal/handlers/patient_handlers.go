@@ -44,7 +44,7 @@ func (h *PatientHandlers) RegisterProtectedRoutes(g *echo.Group) {
 	// Маршрут для получения пациента по ID пользователя
 	g.GET("/users/:userID/patient", h.GetPatientByUserID)
 
-	// Маршрут для обновления профиля пациента (для второго этапа регистрации)
+	// Маршрут для обновления профиля пациента по userID(для второго этапа регистрации)
 	g.PUT("/users/:userID/patient/profile", h.UpdatePatientProfile)
 
 	// Тестовый маршрут для проверки токена и роли
@@ -146,9 +146,17 @@ func (h *PatientHandlers) GetPatientByUserID(c echo.Context) error {
 func (h *PatientHandlers) GetAllPatients(c echo.Context) error {
 	// Проверяем роль пользователя (должна быть "doctor")
 	role, ok := c.Get("role").(string)
-	if !ok || role != "doctor" {
+	if !ok {
+		h.logger.Error("Role not found in context", map[string]interface{}{
+			"endpoint": "GetAllPatients",
+		})
+		return echo.NewHTTPError(http.StatusUnauthorized, "Role not found in token")
+	}
+
+	if role != "doctor" {
 		h.logger.Error("Unauthorized access to patients list", map[string]interface{}{
-			"role": role,
+			"role":     role,
+			"endpoint": "GetAllPatients",
 		})
 		return echo.NewHTTPError(http.StatusForbidden, "Only doctors can access the patients list")
 	}
@@ -156,12 +164,21 @@ func (h *PatientHandlers) GetAllPatients(c echo.Context) error {
 	patients, err := h.patientService.GetAllPatients(c.Request().Context())
 	if err != nil {
 		h.logger.Error("Failed to get all patients", map[string]interface{}{
-			"error": err.Error(),
+			"error":    err.Error(),
+			"endpoint": "GetAllPatients",
 		})
 		return echo.NewHTTPError(http.StatusInternalServerError, "Failed to get patients")
 	}
 
-	return c.JSON(http.StatusOK, patients)
+	h.logger.Info("Successfully retrieved patients list", map[string]interface{}{
+		"count":    len(patients),
+		"endpoint": "GetAllPatients",
+	})
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"total_patients": len(patients),
+		"patients":       patients,
+	})
 }
 
 // UpdatePatient обработчик для обновления пациента

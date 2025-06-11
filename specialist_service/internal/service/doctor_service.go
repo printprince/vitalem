@@ -118,6 +118,9 @@ func (s *doctorService) UpdateDoctor(ctx context.Context, id uuid.UUID, req *mod
 	doctor.Email = req.Email
 	doctor.Phone = req.Phone
 	doctor.Roles = req.Roles
+	doctor.Price = req.Price
+	doctor.Education = req.Education
+	doctor.Certificates = req.Certificates
 
 	updatedDoctor, err := s.doctorRepo.Update(ctx, doctor)
 	if err != nil {
@@ -171,6 +174,9 @@ func (s *doctorService) UpdateDoctorProfile(ctx context.Context, userID uuid.UUI
 	doctor.Email = req.Email
 	doctor.Phone = req.Phone
 	doctor.Roles = req.Roles
+	doctor.Price = req.Price
+	doctor.Education = req.Education
+	doctor.Certificates = req.Certificates
 
 	updatedDoctor, err := s.doctorRepo.Update(ctx, doctor)
 	if err != nil {

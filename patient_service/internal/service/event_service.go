@@ -57,8 +57,6 @@ func (s *eventService) ProcessUserCreatedEvent(ctx context.Context, event models
 		FirstName:           "Не указано",
 		MiddleName:          "Не указано",
 		LastName:            "Не указана",
-		Address:             "Не указан",
-		AvatarURL:           "empty",
 		DateOfBirth:         models.Date{Time: time.Now()},
 		Gender:              "Не указан",
 		Email:               event.Email,

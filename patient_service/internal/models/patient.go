@@ -29,8 +29,6 @@ type Patient struct {
 	FirstName           string         `gorm:"type:varchar(100)"`
 	MiddleName          string         `gorm:"type:varchar(100)"`
 	LastName            string         `gorm:"type:varchar(100)"`
-	Address             string         `gorm:"type:varchar(100)"`
-	AvatarURL           string         `gorm:"type:varchar(255);default:''"`                                        // URL аватара, может быть пустым
 	IIN                 *string        `gorm:"type:varchar(12);uniqueIndex:idx_patients_iin,where:iin IS NOT NULL"` // ИИН должен быть уникальным, но может быть NULL
 	DateOfBirth         time.Time      `gorm:"type:date"`
 	Gender              string         `gorm:"type:varchar(20)"`
@@ -61,5 +59,5 @@ func (p *Patient) BeforeCreate(tx *gorm.DB) error {
 
 // FullName - возвращает полное имя пациента
 func (p *Patient) FullName() string {
-	return p.LastName + " " + p.FirstName + " " + p.MiddleName
+	return p.Surname + " " + p.Name
 }

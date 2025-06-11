@@ -41,17 +41,20 @@ const (
 
 // Doctor модель врача
 type Doctor struct {
-	ID          uuid.UUID      `gorm:"type:uuid;primary_key"`
-	UserID      uuid.UUID      `gorm:"type:uuid;index"`
-	FirstName   string         `gorm:"type:varchar(100)"`
-	MiddleName  string         `gorm:"type:varchar(100)"`
-	LastName    string         `gorm:"type:varchar(100)"`
-	Description string         `gorm:"type:text"`
-	Email       string         `gorm:"type:varchar(255);uniqueIndex"`
-	Phone       string         `gorm:"type:varchar(20)"`
-	Roles       pq.StringArray `gorm:"type:varchar(100)[]"`
-	CreatedAt   time.Time
-	UpdatedAt   time.Time
+	ID           uuid.UUID      `gorm:"type:uuid;primary_key"`
+	UserID       uuid.UUID      `gorm:"type:uuid;index"`
+	FirstName    string         `gorm:"type:varchar(100)"`
+	MiddleName   string         `gorm:"type:varchar(100)"`
+	LastName     string         `gorm:"type:varchar(100)"`
+	Description  string         `gorm:"type:text"`
+	Email        string         `gorm:"type:varchar(255);uniqueIndex"`
+	Phone        string         `gorm:"type:varchar(20)"`
+	Roles        pq.StringArray `gorm:"type:varchar(100)[]"`
+	Price        float64        `gorm:"type:decimal(10,2)"`  // Цена за прием
+	Education    pq.StringArray `gorm:"type:varchar(255)[]"` // Массив образований
+	Certificates pq.StringArray `gorm:"type:varchar(255)[]"` // Массив сертификатов
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // BeforeCreate - хук для генерации UUID перед созданием
