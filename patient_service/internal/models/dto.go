@@ -115,7 +115,7 @@ func (r *PatientCreateRequest) ToPatient() *Patient {
 }
 
 // ToPatientResponse конвертирует Patient в PatientResponse
-func ToPatientResponse(p *Patient) *PatientResponse {
+func (p *Patient) ToPatientResponse() *PatientResponse {
 	return &PatientResponse{
 		ID:                  p.ID,
 		UserID:              p.UserID,
