@@ -90,7 +90,7 @@ func checkAndFixScheduleTable(db *gorm.DB) error {
 
 	// Проверяем существует ли таблица
 	var tableExists bool
-	err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules')").Scan(&tableExists).Error
+	err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1)", "doctor_schedules").Scan(&tableExists).Error
 	if err != nil {
 		return fmt.Errorf("failed to check table existence: %w", err)
 	}
@@ -102,14 +102,14 @@ func checkAndFixScheduleTable(db *gorm.DB) error {
 
 	// Проверяем есть ли проблемный столбец work_days (integer[])
 	var workDaysColumnExists bool
-	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days')").Scan(&workDaysColumnExists).Error
+	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND column_name = $2)", "doctor_schedules", "work_days").Scan(&workDaysColumnExists).Error
 	if err != nil {
 		return fmt.Errorf("failed to check work_days column: %w", err)
 	}
 
 	// Проверяем есть ли правильный столбец work_days_json
 	var workDaysJsonColumnExists bool
-	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'doctor_schedules' AND column_name = 'work_days_json')").Scan(&workDaysJsonColumnExists).Error
+	err = db.Raw("SELECT EXISTS (SELECT FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND column_name = $2)", "doctor_schedules", "work_days_json").Scan(&workDaysJsonColumnExists).Error
 	if err != nil {
 		return fmt.Errorf("failed to check work_days_json column: %w", err)
 	}
