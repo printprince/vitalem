@@ -5,7 +5,6 @@ import (
 	"log"
 
 	"github.com/printprince/vitalem/appointment_service/internal/config"
-	"github.com/printprince/vitalem/appointment_service/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -52,32 +51,74 @@ func RunMigrations(db *gorm.DB) error {
 	}
 	log.Printf("Database connectivity test successful: %s", dbName)
 
-	// Включаем AutoMigrate для создания отсутствующих таблиц
-	log.Println("Running AutoMigrate for missing tables...")
+	// Создаем таблицы вручную
+	log.Println("Creating tables...")
 
-	// Импортируем модели для создания таблиц
-	if err := db.AutoMigrate(
-		&models.DoctorSchedule{},
-		&models.ScheduleException{},
-		&models.Appointment{},
-	); err != nil {
-		return fmt.Errorf("failed to migrate tables: %w", err)
+	// Создаем таблицу doctor_schedules
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS doctor_schedules (
+			id UUID PRIMARY KEY,
+			doctor_id UUID NOT NULL,
+			name VARCHAR(255) NOT NULL,
+			work_days_json TEXT NOT NULL,
+			start_time VARCHAR(5) NOT NULL,
+			end_time VARCHAR(5) NOT NULL,
+			break_start VARCHAR(5),
+			break_end VARCHAR(5),
+			slot_duration BIGINT NOT NULL DEFAULT 30,
+			slot_title VARCHAR(255),
+			appointment_format VARCHAR(10) NOT NULL DEFAULT 'offline',
+			is_active BOOLEAN DEFAULT true,
+			created_at TIMESTAMP WITH TIME ZONE,
+			updated_at TIMESTAMP WITH TIME ZONE
+		)
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create doctor_schedules table: %w", err)
 	}
 
-	// Проверяем существование основных таблиц
-	tables := []string{"doctor_schedules", "schedule_exceptions", "appointments"}
-	for _, tableName := range tables {
-		var exists bool
-		err := db.Raw("SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = CURRENT_SCHEMA() AND table_name = $1 AND table_type = 'BASE TABLE')", tableName).Scan(&exists).Error
-		if err != nil {
-			log.Printf("Failed to check table %s: %v", tableName, err)
-			continue
-		}
-		if exists {
-			log.Printf("Table %s exists", tableName)
-		} else {
-			log.Printf("Table %s does not exist - manual creation required", tableName)
-		}
+	// Создаем таблицу schedule_exceptions
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS schedule_exceptions (
+			id UUID PRIMARY KEY,
+			doctor_id UUID NOT NULL,
+			date DATE NOT NULL,
+			type VARCHAR(20) NOT NULL,
+			custom_start_time VARCHAR(5),
+			custom_end_time VARCHAR(5),
+			reason VARCHAR(255),
+			created_at TIMESTAMP WITH TIME ZONE,
+			updated_at TIMESTAMP WITH TIME ZONE
+		)
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create schedule_exceptions table: %w", err)
+	}
+
+	// Создаем таблицу appointments
+	if err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS appointments (
+			id UUID PRIMARY KEY,
+			start_time TIMESTAMP WITH TIME ZONE NOT NULL,
+			end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+			doctor_id UUID NOT NULL,
+			patient_id UUID,
+			title VARCHAR(255) NOT NULL,
+			status VARCHAR(20) NOT NULL DEFAULT 'available',
+			appointment_type VARCHAR(10) DEFAULT 'offline',
+			meeting_link TEXT,
+			meeting_id VARCHAR(100),
+			patient_notes TEXT,
+			doctor_notes TEXT,
+			schedule_id UUID,
+			created_at TIMESTAMP WITH TIME ZONE,
+			updated_at TIMESTAMP WITH TIME ZONE
+		)
+	`).Error; err != nil {
+		return fmt.Errorf("failed to create appointments table: %w", err)
+	}
+
+	// Создаем индексы
+	if err := CreateIndexes(db); err != nil {
+		log.Printf("Warning: Failed to create indexes: %v", err)
 	}
 
 	log.Println("Database migrations completed successfully")
