@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/printprince/vitalem/appointment_service/internal/config"
+	"github.com/printprince/vitalem/appointment_service/internal/models"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -51,10 +52,17 @@ func RunMigrations(db *gorm.DB) error {
 	}
 	log.Printf("Database connectivity test successful: %s", dbName)
 
-	// AutoMigrate полностью отключен из-за конфликтов схемы во всех таблицах
-	// Все таблицы управляются вручную через SQL-миграции
-	log.Println("AutoMigrate is disabled - using manual schema management")
-	log.Println("Expected tables: doctor_schedules, schedule_exceptions, appointments")
+	// Включаем AutoMigrate для создания отсутствующих таблиц
+	log.Println("Running AutoMigrate for missing tables...")
+
+	// Импортируем модели для создания таблиц
+	if err := db.AutoMigrate(
+		&models.DoctorSchedule{},
+		&models.ScheduleException{},
+		&models.Appointment{},
+	); err != nil {
+		return fmt.Errorf("failed to migrate tables: %w", err)
+	}
 
 	// Проверяем существование основных таблиц
 	tables := []string{"doctor_schedules", "schedule_exceptions", "appointments"}
@@ -71,7 +79,6 @@ func RunMigrations(db *gorm.DB) error {
 	}
 
 	log.Println("Database migrations completed successfully")
-	log.Println("NOTE: All tables are managed manually to avoid GORM AutoMigrate schema conflicts")
 	return nil
 }
 
