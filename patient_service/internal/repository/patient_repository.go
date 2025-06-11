@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 	"github.com/printprince/vitalem/logger_service/pkg/logger"
@@ -18,6 +19,7 @@ type PatientRepository interface {
 	FindAll(ctx context.Context) ([]*models.Patient, error)
 	Update(ctx context.Context, patient *models.Patient) (*models.Patient, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	InitDB() error
 }
 
 // patientRepository реализация репозитория пациентов
@@ -108,6 +110,21 @@ func (r *patientRepository) Delete(ctx context.Context, id uuid.UUID) error {
 			"id":    id,
 		})
 		return err
+	}
+
+	return nil
+}
+
+// InitDB инициализирует базу данных
+func (r *patientRepository) InitDB() error {
+	// Устанавливаем расширение uuid-ossp
+	if err := r.db.Exec("CREATE EXTENSION IF NOT EXISTS \"uuid-ossp\"").Error; err != nil {
+		return fmt.Errorf("failed to create uuid-ossp extension: %v", err)
+	}
+
+	// Автоматическая миграция моделей
+	if err := r.db.AutoMigrate(&models.Patient{}); err != nil {
+		return fmt.Errorf("ошибка миграции моделей: %v", err)
 	}
 
 	return nil

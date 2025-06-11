@@ -94,6 +94,14 @@ func main() {
 	// 1. Репозиторий
 	patientRepo := repository.NewPatientRepository(db, loggerClient)
 
+	// Инициализируем базу данных
+	if err := patientRepo.InitDB(); err != nil {
+		loggerClient.Error("Failed to initialize database", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
 	// 2. Сервисы
 	patientService := service.NewPatientService(patientRepo, loggerClient)
 	eventService := service.NewEventService(patientService, loggerClient)
