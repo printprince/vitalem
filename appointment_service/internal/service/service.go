@@ -26,8 +26,8 @@ type AppointmentService interface {
 	GetAvailableSlots(doctorID uuid.UUID, date string) ([]*models.AvailableSlot, error)
 	BookAppointment(patientID, appointmentID uuid.UUID, req *models.BookAppointmentRequest) (*models.AppointmentResponse, error)
 	CancelAppointment(patientID, appointmentID uuid.UUID) error
-	GetDoctorAppointments(doctorID uuid.UUID, date string) ([]*models.AppointmentResponse, error)
-	GetPatientAppointments(patientID uuid.UUID, date string) ([]*models.AppointmentResponse, error)
+	GetDoctorAppointments(doctorID uuid.UUID) ([]*models.AppointmentResponse, error)
+	GetPatientAppointments(patientID uuid.UUID) ([]*models.AppointmentResponse, error)
 
 	// Exceptions
 	AddException(doctorID uuid.UUID, req *models.AddExceptionRequest) (*models.ExceptionResponse, error)
@@ -617,14 +617,8 @@ func (s *appointmentService) CancelAppointment(patientID, appointmentID uuid.UUI
 	return nil
 }
 
-func (s *appointmentService) GetDoctorAppointments(doctorID uuid.UUID, date string) ([]*models.AppointmentResponse, error) {
-	startDate, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		return nil, fmt.Errorf("invalid date format: %w", err)
-	}
-	endDate := startDate.AddDate(0, 0, 1)
-
-	appointments, err := s.repo.GetDoctorAppointments(doctorID, startDate, endDate)
+func (s *appointmentService) GetDoctorAppointments(doctorID uuid.UUID) ([]*models.AppointmentResponse, error) {
+	appointments, err := s.repo.GetDoctorAppointments(doctorID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get doctor appointments: %w", err)
 	}
@@ -637,14 +631,8 @@ func (s *appointmentService) GetDoctorAppointments(doctorID uuid.UUID, date stri
 	return responses, nil
 }
 
-func (s *appointmentService) GetPatientAppointments(patientID uuid.UUID, date string) ([]*models.AppointmentResponse, error) {
-	startDate, err := time.Parse("2006-01-02", date)
-	if err != nil {
-		return nil, fmt.Errorf("invalid date format: %w", err)
-	}
-	endDate := startDate.AddDate(0, 0, 1)
-
-	appointments, err := s.repo.GetPatientAppointments(patientID, startDate, endDate)
+func (s *appointmentService) GetPatientAppointments(patientID uuid.UUID) ([]*models.AppointmentResponse, error) {
+	appointments, err := s.repo.GetPatientAppointments(patientID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get patient appointments: %w", err)
 	}

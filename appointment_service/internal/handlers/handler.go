@@ -570,7 +570,7 @@ func (h *AppointmentHandler) CancelAppointment(c echo.Context) error {
 	})
 }
 
-// GetDoctorAppointments - GET /api/doctor/appointments?date=2024-06-15
+// GetDoctorAppointments - GET /api/doctor/appointments
 func (h *AppointmentHandler) GetDoctorAppointments(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
@@ -580,15 +580,7 @@ func (h *AppointmentHandler) GetDoctorAppointments(c echo.Context) error {
 		})
 	}
 
-	date := c.QueryParam("date")
-	if date == "" {
-		return c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Error:   "Date parameter is required",
-		})
-	}
-
-	appointments, err := h.service.GetDoctorAppointments(userID, date)
+	appointments, err := h.service.GetDoctorAppointments(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
@@ -602,7 +594,7 @@ func (h *AppointmentHandler) GetDoctorAppointments(c echo.Context) error {
 	})
 }
 
-// GetPatientAppointments - GET /api/patient/appointments?date=2024-06-15
+// GetPatientAppointments - GET /api/patient/appointments
 func (h *AppointmentHandler) GetPatientAppointments(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
 	if !ok {
@@ -612,15 +604,7 @@ func (h *AppointmentHandler) GetPatientAppointments(c echo.Context) error {
 		})
 	}
 
-	date := c.QueryParam("date")
-	if date == "" {
-		return c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Error:   "Date parameter is required",
-		})
-	}
-
-	appointments, err := h.service.GetPatientAppointments(userID, date)
+	appointments, err := h.service.GetPatientAppointments(userID)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,

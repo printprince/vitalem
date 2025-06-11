@@ -27,8 +27,8 @@ type AppointmentRepository interface {
 	CreateAppointment(appointment *models.Appointment) error
 	GetAppointmentByID(id uuid.UUID) (*models.Appointment, error)
 	GetAvailableSlots(doctorID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
-	GetDoctorAppointments(doctorID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
-	GetPatientAppointments(patientID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error)
+	GetDoctorAppointments(doctorID uuid.UUID) ([]*models.Appointment, error)
+	GetPatientAppointments(patientID uuid.UUID) ([]*models.Appointment, error)
 	UpdateAppointment(appointment *models.Appointment) error
 	CheckSlotExists(doctorID uuid.UUID, startTime, endTime time.Time) (bool, error)
 
@@ -109,19 +109,17 @@ func (r *appointmentRepository) GetAvailableSlots(doctorID uuid.UUID, startDate,
 	return appointments, err
 }
 
-func (r *appointmentRepository) GetDoctorAppointments(doctorID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error) {
+func (r *appointmentRepository) GetDoctorAppointments(doctorID uuid.UUID) ([]*models.Appointment, error) {
 	var appointments []*models.Appointment
-	err := r.db.Where("doctor_id = ? AND start_time >= ? AND end_time <= ?",
-		doctorID, startDate, endDate).
+	err := r.db.Where("doctor_id = ?", doctorID).
 		Order("start_time ASC").
 		Find(&appointments).Error
 	return appointments, err
 }
 
-func (r *appointmentRepository) GetPatientAppointments(patientID uuid.UUID, startDate, endDate time.Time) ([]*models.Appointment, error) {
+func (r *appointmentRepository) GetPatientAppointments(patientID uuid.UUID) ([]*models.Appointment, error) {
 	var appointments []*models.Appointment
-	err := r.db.Where("patient_id = ? AND start_time >= ? AND end_time <= ?",
-		patientID, startDate, endDate).
+	err := r.db.Where("patient_id = ?", patientID).
 		Order("start_time ASC").
 		Find(&appointments).Error
 	return appointments, err
