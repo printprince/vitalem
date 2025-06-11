@@ -24,7 +24,7 @@ const (
 // TODO: В будущем при увеличении базы вынести диагнозы, аллергены и диеты
 // в отдельные таблицы с many-to-many связями для нормализации БД.
 type Patient struct {
-	ID                  uuid.UUID      `gorm:"type:uuid;primary_key;default:uuid_generate_v4()" json:"id"`
+	ID                  uuid.UUID      `gorm:"type:uuid;primary_key" json:"id"`
 	UserID              uuid.UUID      `gorm:"type:uuid;not null;unique" json:"user_id"`
 	FirstName           string         `gorm:"type:varchar(100);not null" json:"first_name"`
 	MiddleName          string         `gorm:"type:varchar(100)" json:"middle_name"`
