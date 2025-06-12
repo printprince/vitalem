@@ -7,14 +7,11 @@ RUN apk add --no-cache git
 # Установка рабочей директории
 WORKDIR /app
 
-# Копирование файла go.mod
-COPY go.mod ./
+# Копирование всего содержимого директории FileServerService
+COPY . .
 
 # Генерация go.sum и загрузка зависимостей
 RUN go mod tidy && go mod download
-
-# Копирование исходного кода
-COPY . .
 
 # Сборка приложения
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
