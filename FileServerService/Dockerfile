@@ -1,8 +1,8 @@
 # Build stage
 FROM golang:1.21-alpine AS builder
 
-# Установка git
-RUN apk add --no-cache git
+# Установка git и необходимых инструментов
+RUN apk add --no-cache git gcc musl-dev
 
 # Установка рабочей директории
 WORKDIR /app
@@ -11,8 +11,8 @@ WORKDIR /app
 COPY FileServerService/go.mod ./
 COPY FileServerService/go.sum ./
 
-# Генерация go.sum и загрузка зависимостей
-RUN go mod tidy && go mod download
+# Загрузка зависимостей
+RUN go mod download
 
 # Копирование исходного кода
 COPY FileServerService/ ./
