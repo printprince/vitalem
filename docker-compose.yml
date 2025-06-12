@@ -433,8 +433,8 @@ services:
   # File Server Service - сервис для работы с файлами
   file_server_service:
     build:
-      context: .
-      dockerfile: ./FileServerService/Dockerfile
+      context: ./FileServerService
+      dockerfile: Dockerfile
     container_name: file_server_service
     environment:
       - APP_ENV=development
