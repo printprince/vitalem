@@ -13,8 +13,7 @@ type FileRepository interface {
 	GetByID(ctx context.Context, id string) (*model.File, error)
 	Delete(ctx context.Context, id string) error
 	ListByUserID(ctx context.Context, userID string) ([]model.File, error)
-
-	Update(ctx context.Context, file *model.File) error // <-- добавлено
+	Update(ctx context.Context, file *model.File) error
 }
 
 type fileRepo struct {
@@ -47,6 +46,7 @@ func (r *fileRepo) ListByUserID(ctx context.Context, userID string) ([]model.Fil
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&files).Error
 	return files, err
 }
+
 func (r *fileRepo) Update(ctx context.Context, file *model.File) error {
 	return r.db.WithContext(ctx).Model(&model.File{}).
 		Where("id = ?", file.ID).
