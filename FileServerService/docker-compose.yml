@@ -1,0 +1,67 @@
+version: '3.8'
+#  d757d9bbbd85
+services:
+  app:
+    container_name: app
+    image: 897db888837d
+    ports:
+      - "8080:8080"
+    environment:
+      - APP_ENV=development
+      - SERVER_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=fileserver_db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+    depends_on:
+      - postgres
+      - minio
+    networks:
+      - fileserver_network
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:15-alpine
+    container_name: fileserver_postgres
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=fileserver_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ../migrations:/docker-entrypoint-initdb.d
+    ports:
+      - "5432:5432"
+    networks:
+      - fileserver_network
+    restart: unless-stopped
+
+  minio:
+    image: minio/minio:latest
+    container_name: fileserver_minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    networks:
+      - fileserver_network
+    restart: unless-stopped
+
+networks:
+  fileserver_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  minio_data: 
