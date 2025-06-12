@@ -2,15 +2,14 @@
 package service
 
 import (
-	"FileServerService/internal/storage"
 	"context"
 	"io"
 	"time"
 
 	"github.com/google/uuid"
-
-	"FileServerService/internal/model"
-	"FileServerService/internal/repository"
+	"github.com/vitalem/fileserver/internal/model"
+	"github.com/vitalem/fileserver/internal/repository"
+	"github.com/vitalem/fileserver/internal/storage"
 )
 
 // FileService описывает бизнес-логику работы с файлами.

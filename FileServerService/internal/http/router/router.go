@@ -1,10 +1,11 @@
 package router
 
 import (
-	"FileServerService/internal/http/handler"
-	"FileServerService/internal/http/middleware"
-	"FileServerService/internal/service"
 	"net/http"
+
+	"github.com/vitalem/fileserver/internal/http/handler"
+	"github.com/vitalem/fileserver/internal/http/middleware"
+	"github.com/vitalem/fileserver/internal/service"
 
 	"github.com/go-chi/chi/v5"
 )
