@@ -8,14 +8,14 @@ RUN apk add --no-cache git gcc musl-dev
 WORKDIR /app
 
 # Копирование файлов зависимостей
-COPY FileServerService/go.mod ./
-COPY FileServerService/go.sum ./
+COPY go.mod ./
+COPY go.sum ./
 
 # Загрузка зависимостей
 RUN go mod download && go mod verify
 
 # Копирование исходного кода
-COPY FileServerService/ ./
+COPY . ./
 
 # Сборка приложения
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
