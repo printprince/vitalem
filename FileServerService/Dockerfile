@@ -12,7 +12,7 @@ COPY FileServerService/go.mod ./
 COPY FileServerService/go.sum ./
 
 # Загрузка зависимостей
-RUN go mod download
+RUN go mod download && go mod verify
 
 # Копирование исходного кода
 COPY FileServerService/ ./

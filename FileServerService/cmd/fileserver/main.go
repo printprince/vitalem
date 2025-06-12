@@ -9,13 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"FileServerService/internal/config"
-	"FileServerService/internal/http/router"
-	"FileServerService/internal/repository"
-	"FileServerService/internal/service"
-
-	"FileServerService/internal/http/logger"
-	"FileServerService/internal/storage"
+	"github.com/vitalem/fileserver/internal/config"
+	"github.com/vitalem/fileserver/internal/http/logger"
+	"github.com/vitalem/fileserver/internal/http/router"
+	"github.com/vitalem/fileserver/internal/repository"
+	"github.com/vitalem/fileserver/internal/service"
+	"github.com/vitalem/fileserver/internal/storage"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
