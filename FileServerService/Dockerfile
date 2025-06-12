@@ -1,7 +1,7 @@
-# Этап сборки
-FROM golang:1.24-alpine AS builder
+# Build stage
+FROM golang:1.21-alpine AS builder
 
-# Установка необходимых зависимостей
+# Установка git
 RUN apk add --no-cache git
 
 # Установка рабочей директории
@@ -13,13 +13,13 @@ COPY go.mod go.sum ./
 # Загрузка зависимостей
 RUN go mod download
 
-# Копирование всего исходного кода
+# Копирование исходного кода
 COPY . .
 
-# Сборка бинарного файла
+# Сборка приложения
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
 
-# Финальный образ
+# Final stage
 FROM alpine:latest
 
 # Установка необходимых пакетов
@@ -28,14 +28,11 @@ RUN apk --no-cache add ca-certificates tzdata
 # Установка рабочей директории
 WORKDIR /app
 
-# Копирование бинарного файла
+# Копирование бинарного файла из builder
 COPY --from=builder /app/fileserver ./
 
-# Копирование конфигурационного файла
-COPY .env ./.env
-
 # Открытие порта
-EXPOSE 8080
+EXPOSE 8081
 
-# Команда запуска
+# Запуск приложения
 CMD ["./fileserver"]
