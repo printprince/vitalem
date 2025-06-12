@@ -404,71 +404,6 @@ services:
         max-size: "10m"
         max-file: "3"
 
-  # MinIO - объектное хранилище для файлов
-  minio:
-    image: minio/minio:latest
-    container_name: vitalem_minio
-    environment:
-      - MINIO_ROOT_USER=minioadmin
-      - MINIO_ROOT_PASSWORD=minioadmin
-    volumes:
-      - minio_data:/data
-    ports:
-      - "9000:9000"  # API порт
-      - "9001:9001"  # Console порт
-    command: server /data --console-address ":9001"
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
-  # File Server Service - сервис для работы с файлами
-  file_server_service:
-    build:
-      context: ./FileServerService
-      dockerfile: Dockerfile
-    container_name: file_server_service
-    environment:
-      - APP_ENV=development
-      - SERVER_PORT=8081
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=postgres
-      - DB_PASSWORD=61324
-      - DB_NAME=vitalem_db
-      - MINIO_ENDPOINT=minio:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin
-      - MINIO_USE_SSL=false
-      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
-      - LOGGER_SERVICE_URL=http://logger_service:8802
-    ports:
-      - "8081:8081"
-    depends_on:
-      - postgres
-      - minio
-      - logger_service
-    networks:
-      - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-
 networks:
   app-network:
     driver: bridge
@@ -477,4 +412,3 @@ volumes:
   postgres_data:
   elasticsearch_data:
   rabbitmq_data:
-  minio_data:
