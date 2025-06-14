@@ -111,7 +111,7 @@ func main() {
 
 	// 7. Инициализация Echo и роутера
 	e := echo.New()
-	e.Use(middleware.Logger())
+	e.Use(middleware.Logger()) // TODO: Заменить на кастомное middleware без health check логирования
 	e.Use(middleware.Recover())
 
 	router.SetupRoutes(e, notifService)

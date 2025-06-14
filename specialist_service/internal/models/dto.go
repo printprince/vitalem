@@ -15,6 +15,7 @@ type DoctorCreateRequest struct {
 	Description  string    `json:"description"`
 	Email        string    `json:"email" binding:"required,email"`
 	Phone        string    `json:"phone"`
+	AvatarURL    string    `json:"avatar_url"`
 	Roles        []string  `json:"roles"`
 	Price        float64   `json:"price"`
 	Education    []string  `json:"education"`
@@ -31,6 +32,7 @@ type DoctorResponse struct {
 	Description  string    `json:"description"`
 	Email        string    `json:"email"`
 	Phone        string    `json:"phone"`
+	AvatarURL    string    `json:"avatar_url"`
 	Roles        []string  `json:"roles"`
 	Price        float64   `json:"price"`
 	Education    []string  `json:"education"`
@@ -47,6 +49,7 @@ func (r *DoctorCreateRequest) ToDoctor() *Doctor {
 		Description:  r.Description,
 		Email:        r.Email,
 		Phone:        r.Phone,
+		AvatarURL:    r.AvatarURL,
 		Roles:        pq.StringArray(r.Roles),
 		Price:        r.Price,
 		Education:    pq.StringArray(r.Education),
@@ -65,6 +68,7 @@ func (d *Doctor) ToDoctorResponse() *DoctorResponse {
 		Description:  d.Description,
 		Email:        d.Email,
 		Phone:        d.Phone,
+		AvatarURL:    d.AvatarURL,
 		Roles:        []string(d.Roles),
 		Price:        d.Price,
 		Education:    []string(d.Education),

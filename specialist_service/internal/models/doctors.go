@@ -49,6 +49,7 @@ type Doctor struct {
 	Description  string         `gorm:"type:text"`
 	Email        string         `gorm:"type:varchar(255);uniqueIndex"`
 	Phone        string         `gorm:"type:varchar(20)"`
+	AvatarURL    string         `gorm:"type:varchar(255)" json:"avatar_url"`
 	Roles        pq.StringArray `gorm:"type:varchar(100)[]"`
 	Price        float64        `gorm:"type:decimal(10,2)"`  // Цена за прием
 	Education    pq.StringArray `gorm:"type:varchar(255)[]"` // Массив образований

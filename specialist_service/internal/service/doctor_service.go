@@ -117,6 +117,7 @@ func (s *doctorService) UpdateDoctor(ctx context.Context, id uuid.UUID, req *mod
 	doctor.Description = req.Description
 	doctor.Email = req.Email
 	doctor.Phone = req.Phone
+	doctor.AvatarURL = req.AvatarURL
 	doctor.Roles = req.Roles
 	doctor.Price = req.Price
 	doctor.Education = req.Education
@@ -173,6 +174,7 @@ func (s *doctorService) UpdateDoctorProfile(ctx context.Context, userID uuid.UUI
 	doctor.Description = req.Description
 	doctor.Email = req.Email
 	doctor.Phone = req.Phone
+	doctor.AvatarURL = req.AvatarURL
 	doctor.Roles = req.Roles
 	doctor.Price = req.Price
 	doctor.Education = req.Education

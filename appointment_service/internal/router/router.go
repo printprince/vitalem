@@ -11,7 +11,7 @@ import (
 func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret string) {
 	// Основные middleware
 	e.Use(middleware.CORS())
-	e.Use(middleware.Logger())
+	e.Use(utilsMiddleware.LoggerMiddleware()) // Кастомное middleware без health check логирования
 	e.Use(middleware.Recover())
 	e.Use(middleware.RequestID())
 

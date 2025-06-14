@@ -99,7 +99,7 @@ func main() {
 	// Инициализируем echo
 	e := echo.New()
 	e.Validator = middleware.NewValidator()
-	e.Use(echomiddleware.Logger())
+	e.Use(middleware.LoggerMiddleware()) // Кастомное middleware без health check логирования
 	e.Use(echomiddleware.Recover())
 	e.Use(middleware.CORSMiddleware())
 
