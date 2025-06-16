@@ -27,7 +27,9 @@ type AppointmentService interface {
 	BookAppointment(patientID, appointmentID uuid.UUID, req *models.BookAppointmentRequest) (*models.AppointmentResponse, error)
 	CancelAppointment(patientID, appointmentID uuid.UUID) error
 	GetDoctorAppointments(doctorID uuid.UUID) ([]*models.AppointmentResponse, error)
+	GetDoctorAppointmentByID(doctorID, appointmentID uuid.UUID) (*models.AppointmentResponse, error)
 	GetPatientAppointments(patientID uuid.UUID) ([]*models.AppointmentResponse, error)
+	GetPatientAppointmentByID(patientID, appointmentID uuid.UUID) (*models.AppointmentResponse, error)
 
 	// Exceptions
 	AddException(doctorID uuid.UUID, req *models.AddExceptionRequest) (*models.ExceptionResponse, error)
@@ -1201,4 +1203,30 @@ func (s *appointmentService) GetGeneratedSlots(doctorID, scheduleID uuid.UUID, s
 		Slots:    slots,
 		Summary:  summary,
 	}, nil
+}
+
+func (s *appointmentService) GetDoctorAppointmentByID(doctorID, appointmentID uuid.UUID) (*models.AppointmentResponse, error) {
+	appointment, err := s.repo.GetAppointmentByID(appointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("appointment not found: %w", err)
+	}
+
+	if appointment.DoctorID != doctorID {
+		return nil, errors.New("appointment doesn't belong to this doctor")
+	}
+
+	return s.appointmentToResponse(appointment), nil
+}
+
+func (s *appointmentService) GetPatientAppointmentByID(patientID, appointmentID uuid.UUID) (*models.AppointmentResponse, error) {
+	appointment, err := s.repo.GetAppointmentByID(appointmentID)
+	if err != nil {
+		return nil, fmt.Errorf("appointment not found: %w", err)
+	}
+
+	if appointment.PatientID == nil || *appointment.PatientID != patientID {
+		return nil, errors.New("appointment doesn't belong to this patient")
+	}
+
+	return s.appointmentToResponse(appointment), nil
 }

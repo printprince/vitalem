@@ -40,7 +40,8 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 		doctor.GET("/schedules/:id/generated-slots", handler.GetGeneratedSlots) // Получить детали сгенерированных слотов
 
 		// Doctor's appointments - врач видит свои записи
-		doctor.GET("/appointments", handler.GetDoctorAppointments)
+		doctor.GET("/appointments", handler.GetDoctorAppointments)        // Все записи врача
+		doctor.GET("/appointments/:id", handler.GetDoctorAppointmentByID) // Конкретная запись по ID
 
 		// Exception management - только врачи могут создавать исключения
 		doctor.POST("/exceptions", handler.AddException)
@@ -52,7 +53,8 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 	patient.Use(utilsMiddleware.RequirePatient())
 	{
 		// Patient's appointments - пациент видит свои записи
-		patient.GET("/appointments", handler.GetPatientAppointments)
+		patient.GET("/appointments", handler.GetPatientAppointments)        // Все записи пациента
+		patient.GET("/appointments/:id", handler.GetPatientAppointmentByID) // Конкретная запись по ID
 
 		// Patient can cancel their own appointments
 		patient.POST("/appointments/:id/cancel", handler.CancelAppointment)

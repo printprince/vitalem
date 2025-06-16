@@ -594,6 +594,66 @@ func (h *AppointmentHandler) GetDoctorAppointments(c echo.Context) error {
 	})
 }
 
+// GetDoctorAppointmentByID - GET /api/doctor/appointments/:id
+func (h *AppointmentHandler) GetDoctorAppointmentByID(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		h.logError("Invalid user ID in token", map[string]interface{}{
+			"endpoint": "GetDoctorAppointmentByID",
+		})
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	appointmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		h.logError("Invalid appointment ID", map[string]interface{}{
+			"endpoint":      "GetDoctorAppointmentByID",
+			"userID":        userID.String(),
+			"appointmentID": c.Param("id"),
+			"error":         err.Error(),
+		})
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid appointment ID",
+		})
+	}
+
+	h.logInfo("Getting appointment by ID", map[string]interface{}{
+		"endpoint":      "GetDoctorAppointmentByID",
+		"userID":        userID.String(),
+		"appointmentID": appointmentID.String(),
+	})
+
+	appointment, err := h.service.GetDoctorAppointmentByID(userID, appointmentID)
+	if err != nil {
+		h.logError("Failed to get appointment", map[string]interface{}{
+			"endpoint":      "GetDoctorAppointmentByID",
+			"userID":        userID.String(),
+			"appointmentID": appointmentID.String(),
+			"error":         err.Error(),
+		})
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	h.logInfo("Appointment retrieved successfully", map[string]interface{}{
+		"endpoint":      "GetDoctorAppointmentByID",
+		"userID":        userID.String(),
+		"appointmentID": appointmentID.String(),
+		"status":        appointment.Status,
+	})
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    appointment,
+	})
+}
+
 // GetPatientAppointments - GET /api/patient/appointments
 func (h *AppointmentHandler) GetPatientAppointments(c echo.Context) error {
 	userID, ok := c.Get("user_id").(uuid.UUID)
@@ -615,6 +675,66 @@ func (h *AppointmentHandler) GetPatientAppointments(c echo.Context) error {
 	return c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
 		Data:    appointments,
+	})
+}
+
+// GetPatientAppointmentByID - GET /api/patient/appointments/:id
+func (h *AppointmentHandler) GetPatientAppointmentByID(c echo.Context) error {
+	userID, ok := c.Get("user_id").(uuid.UUID)
+	if !ok {
+		h.logError("Invalid user ID in token", map[string]interface{}{
+			"endpoint": "GetPatientAppointmentByID",
+		})
+		return c.JSON(http.StatusUnauthorized, models.APIResponse{
+			Success: false,
+			Error:   "Invalid user ID in token",
+		})
+	}
+
+	appointmentID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		h.logError("Invalid appointment ID", map[string]interface{}{
+			"endpoint":      "GetPatientAppointmentByID",
+			"userID":        userID.String(),
+			"appointmentID": c.Param("id"),
+			"error":         err.Error(),
+		})
+		return c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Error:   "Invalid appointment ID",
+		})
+	}
+
+	h.logInfo("Getting appointment by ID", map[string]interface{}{
+		"endpoint":      "GetPatientAppointmentByID",
+		"userID":        userID.String(),
+		"appointmentID": appointmentID.String(),
+	})
+
+	appointment, err := h.service.GetPatientAppointmentByID(userID, appointmentID)
+	if err != nil {
+		h.logError("Failed to get appointment", map[string]interface{}{
+			"endpoint":      "GetPatientAppointmentByID",
+			"userID":        userID.String(),
+			"appointmentID": appointmentID.String(),
+			"error":         err.Error(),
+		})
+		return c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Error:   err.Error(),
+		})
+	}
+
+	h.logInfo("Appointment retrieved successfully", map[string]interface{}{
+		"endpoint":      "GetPatientAppointmentByID",
+		"userID":        userID.String(),
+		"appointmentID": appointmentID.String(),
+		"status":        appointment.Status,
+	})
+
+	return c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Data:    appointment,
 	})
 }
 
