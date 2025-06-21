@@ -15,9 +15,17 @@ ENV GOROOT=""
 ENV GOPROXY=direct
 ENV GOSUMDB=off
 
-# Отладка Go окружения
+# Отладка Go окружения и файловой структуры
 RUN go env | grep -E "(GOPATH|GOROOT|GO111MODULE|GOMOD)"
 RUN pwd && ls -la
+RUN echo "=== Checking internal directory ==="
+RUN ls -la internal/
+RUN echo "=== Checking config directory ==="
+RUN ls -la internal/config/ || echo "Config directory does not exist"
+RUN echo "=== Checking middleware directory ==="
+RUN ls -la internal/http/middleware/ || echo "Middleware directory does not exist"
+RUN echo "=== Finding all .go files ==="
+RUN find . -name "*.go" | head -10
 
 # Создаем новый go.mod с replace директивами
 RUN cp go.mod go.mod.backup
