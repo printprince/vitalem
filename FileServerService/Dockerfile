@@ -18,6 +18,9 @@ ENV GOROOT=""
 ENV GOPROXY=direct
 ENV GOSUMDB=off
 
+# Очищаем весь кэш Go
+RUN go clean -cache -modcache -i -r
+
 # Отладка Go окружения и файловой структуры
 RUN go env | grep -E "(GOPATH|GOROOT|GO111MODULE|GOMOD)"
 RUN pwd && ls -la
@@ -30,9 +33,10 @@ RUN ls -la internal/http/middleware/ || echo "Middleware directory does not exis
 RUN echo "=== Finding all .go files ==="
 RUN find . -name "*.go" | head -10
 
-# Собираем приложение напрямую без replace директив
+# Собираем приложение с полной очисткой
 RUN go mod download
-RUN go build -o fileserver ./cmd/fileserver
+RUN go clean -cache
+RUN go build -a -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
