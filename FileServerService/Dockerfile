@@ -1,5 +1,8 @@
 FROM golang:1.24-alpine AS builder
 
+# Устанавливаем необходимые пакеты включая git
+RUN apk add --no-cache git ca-certificates tzdata curl
+
 WORKDIR /build
 
 # Копируем все файлы FileServerService
