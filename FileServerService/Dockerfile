@@ -5,8 +5,11 @@ RUN apk add --no-cache git ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Копируем все файлы (теперь context = FileServerService)
-COPY . .
+# Копируем файлы по отдельности
+COPY go.mod go.sum ./
+COPY cmd/ ./cmd/
+COPY internal/ ./internal/
+COPY migrations/ ./migrations/
 
 # Полностью переопределяем Go окружение
 ENV GO111MODULE=on
@@ -27,28 +30,9 @@ RUN ls -la internal/http/middleware/ || echo "Middleware directory does not exis
 RUN echo "=== Finding all .go files ==="
 RUN find . -name "*.go" | head -10
 
-# Создаем новый go.mod с replace директивами
-RUN cp go.mod go.mod.backup
-RUN echo 'module fileserver' > go.mod.new
-RUN echo '' >> go.mod.new
-RUN echo 'go 1.24' >> go.mod.new
-RUN echo '' >> go.mod.new
-RUN echo 'replace fileserver/internal/config => ./internal/config' >> go.mod.new
-RUN echo 'replace fileserver/internal/http/middleware => ./internal/http/middleware' >> go.mod.new
-RUN echo 'replace fileserver/internal/http/logger => ./internal/http/logger' >> go.mod.new
-RUN echo 'replace fileserver/internal/http/router => ./internal/http/router' >> go.mod.new
-RUN echo 'replace fileserver/internal/repository => ./internal/repository' >> go.mod.new
-RUN echo 'replace fileserver/internal/service => ./internal/service' >> go.mod.new
-RUN echo 'replace fileserver/internal/storage => ./internal/storage' >> go.mod.new
-RUN echo 'replace fileserver/internal/model => ./internal/model' >> go.mod.new
-RUN echo '' >> go.mod.new
-RUN tail -n +4 go.mod.backup >> go.mod.new
-RUN mv go.mod.new go.mod
-
-# Собираем приложение с новым go.mod
-RUN go mod tidy
+# Собираем приложение напрямую без replace директив
 RUN go mod download
-RUN go build -mod=mod -o fileserver ./cmd/fileserver
+RUN go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
