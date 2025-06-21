@@ -5,14 +5,15 @@ WORKDIR /go/src/github.com/printprince/vitalem
 # Копируем все необходимые файлы
 COPY . .
 
-# Устанавливаем GOPATH
-ENV GOPATH=/go
+# Принудительно включаем Go modules и отключаем GOPATH
+ENV GO111MODULE=on
+ENV GOPATH=
 
 # Обновляем go.mod и go.sum
 RUN cd FileServerService && go mod tidy && go mod download
 
-# Собираем приложение
-RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fileserver ./cmd/fileserver
+# Собираем приложение с Go modules
+RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
