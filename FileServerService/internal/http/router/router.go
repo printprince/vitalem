@@ -3,11 +3,10 @@ package router
 import (
 	"net/http"
 
-	"github.com/vitalem/fileserver/internal/http/handler"
-	"github.com/vitalem/fileserver/internal/http/middleware"
-	"github.com/vitalem/fileserver/internal/service"
-
 	"github.com/go-chi/chi/v5"
+	"github.com/printprince/vitalem/FileServerService/internal/http/handler"
+	"github.com/printprince/vitalem/FileServerService/internal/http/middleware"
+	"github.com/printprince/vitalem/FileServerService/internal/service"
 )
 
 func NewRouter(fileService service.FileService, jwtSecret string) http.Handler {

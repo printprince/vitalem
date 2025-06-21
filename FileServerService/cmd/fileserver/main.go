@@ -9,12 +9,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/vitalem/fileserver/internal/config"
-	"github.com/vitalem/fileserver/internal/http/logger"
-	"github.com/vitalem/fileserver/internal/http/router"
-	"github.com/vitalem/fileserver/internal/repository"
-	"github.com/vitalem/fileserver/internal/service"
-	"github.com/vitalem/fileserver/internal/storage"
+	"github.com/printprince/vitalem/FileServerService/internal/config"
+	"github.com/printprince/vitalem/FileServerService/internal/http/logger"
+	"github.com/printprince/vitalem/FileServerService/internal/http/router"
+	"github.com/printprince/vitalem/FileServerService/internal/repository"
+	"github.com/printprince/vitalem/FileServerService/internal/service"
+	"github.com/printprince/vitalem/FileServerService/internal/storage"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"

@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vitalem/fileserver/internal/model"
-	"github.com/vitalem/fileserver/internal/repository"
-	"github.com/vitalem/fileserver/internal/storage"
+	"github.com/printprince/vitalem/FileServerService/internal/model"
+	"github.com/printprince/vitalem/FileServerService/internal/repository"
+	"github.com/printprince/vitalem/FileServerService/internal/storage"
 )
 
 // FileService описывает бизнес-логику работы с файлами.
