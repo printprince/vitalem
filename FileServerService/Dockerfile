@@ -12,8 +12,14 @@ ENV GOPATH=
 # Обновляем go.mod и go.sum
 RUN cd FileServerService && go mod tidy && go mod download
 
-# Собираем приложение с Go modules
-RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
+# Отладочная информация
+RUN cd FileServerService && \
+    echo "=== Current directory ===" && pwd && \
+    echo "=== Go env ===" && go env GOMOD GOPATH GO111MODULE && \
+    echo "=== Module info ===" && go list -m && \
+    echo "=== Available packages ===" && go list ./... && \
+    echo "=== Building ===" && \
+    CGO_ENABLED=0 GOOS=linux go build -v -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
