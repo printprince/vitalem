@@ -11,18 +11,15 @@ ENV GO111MODULE=on
 # Копируем только FileServerService
 COPY FileServerService/ .
 
-# Скачиваем зависимости
-RUN go mod download
-
 # Отладочная информация
 RUN echo "=== PWD ===" && pwd && \
     echo "=== LS -la ===" && ls -la && \
-    echo "=== GO ENV ===" && go env GO111MODULE GOMOD GOPATH && \
-    echo "=== GO MOD ===" && cat go.mod && \
-    echo "=== GO LIST ===" && go list -m all && \
-    echo "=== INTERNAL CONFIG ===" && ls -la internal/config/ && \
-    echo "=== INTERNAL MIDDLEWARE ===" && ls -la internal/http/middleware/ && \
-    echo "Building..."
+    echo "=== INTERNAL ===" && ls -la internal/ && \
+    echo "=== INTERNAL DIRS ===" && find internal -type d && \
+    echo "=== INTERNAL FILES ===" && find internal -name "*.go" | head -10
+
+# Скачиваем зависимости
+RUN go mod download
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
