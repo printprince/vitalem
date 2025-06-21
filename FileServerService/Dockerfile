@@ -1,19 +1,21 @@
 FROM golang:1.24-alpine AS builder
 
-WORKDIR /go/src/github.com/printprince/vitalem
+# Устанавливаем необходимые пакеты
+RUN apk add --no-cache git ca-certificates tzdata curl
 
-# Копируем все необходимые файлы
-COPY . .
+WORKDIR /app
 
-# Принудительно включаем Go modules и полностью отключаем GOPATH
+# Принудительно включаем Go modules
 ENV GO111MODULE=on
-ENV GOPATH=""
 
-# Обновляем go.mod и go.sum
-RUN cd FileServerService && go mod tidy && go mod download
+# Копируем только FileServerService
+COPY FileServerService/ .
 
-# Собираем приложение с Go modules
-RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
+# Скачиваем зависимости
+RUN go mod download
+
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
@@ -24,8 +26,8 @@ RUN apk --no-cache add ca-certificates tzdata wget curl
 WORKDIR /app
 
 # Копируем исполняемый файл и миграции
-COPY --from=builder /go/src/github.com/printprince/vitalem/FileServerService/fileserver .
-COPY --from=builder /go/src/github.com/printprince/vitalem/FileServerService/migrations ./migrations
+COPY --from=builder /app/fileserver .
+COPY --from=builder /app/migrations ./migrations
 
 EXPOSE 8087
 
