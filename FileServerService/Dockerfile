@@ -14,6 +14,16 @@ COPY FileServerService/ .
 # Скачиваем зависимости
 RUN go mod download
 
+# Отладочная информация
+RUN echo "=== PWD ===" && pwd && \
+    echo "=== LS -la ===" && ls -la && \
+    echo "=== GO ENV ===" && go env GO111MODULE GOMOD GOPATH && \
+    echo "=== GO MOD ===" && cat go.mod && \
+    echo "=== GO LIST ===" && go list -m all && \
+    echo "=== INTERNAL CONFIG ===" && ls -la internal/config/ && \
+    echo "=== INTERNAL MIDDLEWARE ===" && ls -la internal/http/middleware/ && \
+    echo "Building..."
+
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
 
