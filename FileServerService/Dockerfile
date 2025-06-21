@@ -15,12 +15,16 @@ COPY FileServerService/go.mod FileServerService/go.sum ./
 
 # Скачиваем зависимости
 RUN go mod download
+RUN go mod verify
 
 # Копируем весь исходный код
 COPY FileServerService/ .
 
-# Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build \
+# Обновляем зависимости
+RUN go mod tidy
+
+# Включаем Go modules и собираем приложение
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
     -o fileserver \
