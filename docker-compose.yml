@@ -433,7 +433,7 @@ services:
       - MINIO_USE_SSL=false
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
     ports:
-      - "8807:8080"
+      - "8808:8080"
     depends_on:
       postgres:
         condition: service_healthy

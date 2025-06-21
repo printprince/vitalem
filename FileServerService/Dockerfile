@@ -2,7 +2,7 @@
 FROM golang:1.24-alpine AS builder
 
 # Устанавливаем необходимые пакеты
-RUN apk add --no-cache git ca-certificates tzdata curl gcc musl-dev
+RUN apk add --no-cache git ca-certificates tzdata curl
 
 # Создаем пользователя
 RUN adduser -D -s /bin/sh -u 1001 appuser
@@ -10,12 +10,14 @@ RUN adduser -D -s /bin/sh -u 1001 appuser
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Включаем Go modules
-ENV GO111MODULE=on
-ENV GOPATH=""
-
 # Копируем go.mod и go.sum
 COPY go.mod go.sum ./
+
+# Включаем Go modules и отключаем GOPATH
+ENV GO111MODULE=on
+ENV GOPATH=
+ENV GOPROXY=direct
+ENV GOSUMDB=off
 
 # Скачиваем зависимости
 RUN go mod download
@@ -23,26 +25,11 @@ RUN go mod download
 # Копируем весь исходный код
 COPY . .
 
-# Проверяем что модули работают
-RUN go mod verify
-
-# Отладочная информация
-RUN echo "=== GO ENV ===" && go env | grep -E "(GO111MODULE|GOPATH|GOMOD)"
-RUN echo "=== PWD ===" && pwd
-RUN echo "=== GO.MOD ===" && cat go.mod
-
-# Обновляем модули еще раз
-RUN go mod tidy
-
-# Создаем vendor директорию
+# Создаем vendor директорию со всеми зависимостями
 RUN go mod vendor
 
-# Собираем приложение с vendor
-RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
-    -mod=vendor \
-    -ldflags='-w -s' \
-    -o fileserver \
-    ./cmd/fileserver
+# Собираем приложение используя только vendor
+RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
