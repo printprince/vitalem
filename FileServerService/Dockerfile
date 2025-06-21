@@ -10,9 +10,11 @@ COPY . .
 ENV GOPATH=/go
 WORKDIR /go/src/github.com/printprince/vitalem/FileServerService
 
-# Обновляем go.mod и go.sum
-RUN go mod tidy
-RUN go mod download
+# Отключаем Go modules для использования GOPATH
+ENV GO111MODULE=off
+
+# Устанавливаем зависимости через go get
+RUN go get -d ./...
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fileserver ./cmd/fileserver
