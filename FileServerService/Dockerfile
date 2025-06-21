@@ -1,68 +1,39 @@
 # Используем официальный образ Go
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
-# Устанавливаем необходимые пакеты
-RUN apk add --no-cache git ca-certificates tzdata curl gcc musl-dev
+WORKDIR /go/src/github.com/printprince/vitalem
 
-# Создаем пользователя
-RUN adduser -D -s /bin/sh -u 1001 appuser
+# Копируем все необходимые файлы
+COPY . .
 
-# Устанавливаем рабочую директорию
-WORKDIR /app
+# Устанавливаем GOPATH и переходим в директорию сервиса
+ENV GOPATH=/go
+WORKDIR /go/src/github.com/printprince/vitalem/FileServerService
 
-# Копируем go.mod и go.sum
-COPY FileServerService/go.mod FileServerService/go.sum ./
-
-# Скачиваем зависимости
-RUN go mod download
-RUN go mod verify
-
-# Копируем весь исходный код
-COPY FileServerService/ .
-
-# Обновляем зависимости
+# Обновляем go.mod и go.sum
 RUN go mod tidy
+RUN go mod download
 
-# Отладочная информация
-RUN pwd && ls -la && cat go.mod && go env
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fileserver ./cmd/fileserver
 
-# Включаем Go modules и собираем приложение
-RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags='-w -s -extldflags "-static"' \
-    -a -installsuffix cgo \
-    -o fileserver \
-    ./cmd/fileserver
-
-# Финальная стадия
+# Финальный образ
 FROM alpine:latest
 
-# Устанавливаем необходимые пакеты
-RUN apk --no-cache add ca-certificates curl
+RUN apk --no-cache add ca-certificates tzdata wget curl
 
-# Создаем пользователя
-RUN adduser -D -s /bin/sh -u 1001 appuser
-
-# Создаем директории
-RUN mkdir -p /app && chown appuser:appuser /app
-
-# Копируем бинарник
-COPY --from=builder --chown=appuser:appuser /app/fileserver /app/fileserver
-
-# Копируем миграции
-COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
-
-# Переключаемся на пользователя
-USER appuser
-
-# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Открываем порт
+# Копируем исполняемый файл
+COPY --from=builder /go/src/github.com/printprince/vitalem/FileServerService/fileserver .
+
+# Копируем миграции
+COPY --from=builder /go/src/github.com/printprince/vitalem/FileServerService/migrations ./migrations
+
 EXPOSE 8080
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD curl -f http://localhost:8080/health || exit 1
+# Health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Запускаем приложение
 CMD ["./fileserver"]

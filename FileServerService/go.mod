@@ -1,4 +1,4 @@
-module fileserver
+module github.com/printprince/vitalem/FileServerService
 
 go 1.21
 
