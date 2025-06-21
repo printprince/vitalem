@@ -12,7 +12,7 @@ ENV GOPATH=/go
 RUN cd FileServerService && go mod tidy && go mod download
 
 # Собираем приложение
-RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fileserver ./cmd/fileserver/main.go
+RUN cd FileServerService && CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
