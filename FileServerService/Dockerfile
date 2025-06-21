@@ -12,14 +12,21 @@ RUN ls -la internal/
 # Проверяем go.mod
 RUN cat go.mod
 
-# Создаем go.work для принудительной работы с модулями
-RUN echo "go 1.24" > go.work
-RUN echo "" >> go.work
-RUN echo "use ." >> go.work
+# Принудительно отключаем все пути Go и используем только модули
+ENV GO111MODULE=on
+ENV GOPATH=""
+ENV GOPROXY=direct
+ENV GOSUMDB=off
 
 # Проверяем, что Go видит модуль
 RUN go list -m
-RUN GOWORK=go.work go build -o fileserver ./cmd/fileserver
+
+# Создаем vendor директорию с зависимостями
+RUN go mod download
+RUN go mod vendor
+
+# Пробуем собрать с vendor
+RUN go build -mod=vendor -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
