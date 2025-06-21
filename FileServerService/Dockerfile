@@ -13,13 +13,8 @@ WORKDIR /app
 # Копируем go.mod и go.sum
 COPY go.mod go.sum ./
 
-# Включаем Go modules и отключаем GOPATH
+# Скачиваем зависимости с включенными модулями
 ENV GO111MODULE=on
-ENV GOPATH=
-ENV GOPROXY=direct
-ENV GOSUMDB=off
-
-# Скачиваем зависимости
 RUN go mod download
 
 # Копируем весь исходный код
@@ -28,8 +23,15 @@ COPY . .
 # Создаем vendor директорию со всеми зависимостями
 RUN go mod vendor
 
-# Собираем приложение используя только vendor
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -o fileserver ./cmd/fileserver
+# Отключаем модули и используем только GOPATH для сборки
+ENV GO111MODULE=off
+ENV GOPATH=/go
+RUN mkdir -p /go/src/fileserver
+RUN cp -r . /go/src/fileserver/
+
+# Собираем приложение из GOPATH
+WORKDIR /go/src/fileserver
+RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
@@ -44,10 +46,10 @@ RUN adduser -D -s /bin/sh -u 1001 appuser
 RUN mkdir -p /app && chown appuser:appuser /app
 
 # Копируем бинарник
-COPY --from=builder --chown=appuser:appuser /app/fileserver /app/fileserver
+COPY --from=builder --chown=appuser:appuser /go/src/fileserver/fileserver /app/fileserver
 
 # Копируем миграции
-COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+COPY --from=builder --chown=appuser:appuser /go/src/fileserver/migrations /app/migrations
 
 # Переключаемся на пользователя
 USER appuser
