@@ -12,11 +12,11 @@ ENV GO111MODULE=on
 COPY FileServerService/ .
 
 # Отладочная информация
-RUN echo "=== PWD ===" && pwd && \
-    echo "=== LS -la ===" && ls -la && \
-    echo "=== INTERNAL ===" && ls -la internal/ && \
-    echo "=== INTERNAL DIRS ===" && find internal -type d && \
-    echo "=== INTERNAL FILES ===" && find internal -name "*.go" | head -10
+RUN pwd
+RUN ls -la
+RUN ls -la internal/
+RUN find internal -type d
+RUN find internal -name "*.go" | head -10
 
 # Скачиваем зависимости
 RUN go mod download
