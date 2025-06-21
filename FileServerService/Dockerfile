@@ -8,8 +8,6 @@ COPY FileServerService/ .
 # Проверяем, что файлы скопировались
 RUN ls -la
 RUN ls -la internal/
-RUN ls -la internal/config/
-RUN ls -la internal/http/middleware/
 
 # Проверяем go.mod
 RUN cat go.mod
