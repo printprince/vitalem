@@ -10,6 +10,10 @@ RUN adduser -D -s /bin/sh -u 1001 appuser
 # Устанавливаем рабочую директорию
 WORKDIR /app
 
+# Включаем Go modules
+ENV GO111MODULE=on
+ENV GOPATH=""
+
 # Копируем go.mod и go.sum
 COPY go.mod go.sum ./
 
@@ -19,8 +23,16 @@ RUN go mod download
 # Копируем весь исходный код
 COPY . .
 
+# Проверяем что модули работают
+RUN go mod verify
+
+# Отладочная информация
+RUN echo "=== GO ENV ===" && go env | grep -E "(GO111MODULE|GOPATH|GOMOD)"
+RUN echo "=== PWD ===" && pwd
+RUN echo "=== GO.MOD ===" && cat go.mod
+
 # Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build \
+RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
     -ldflags='-w -s -extldflags "-static"' \
     -a -installsuffix cgo \
     -o fileserver \
