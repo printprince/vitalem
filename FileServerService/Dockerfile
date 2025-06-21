@@ -31,10 +31,16 @@ RUN echo "=== GO ENV ===" && go env | grep -E "(GO111MODULE|GOPATH|GOMOD)"
 RUN echo "=== PWD ===" && pwd
 RUN echo "=== GO.MOD ===" && cat go.mod
 
-# Собираем приложение
+# Обновляем модули еще раз
+RUN go mod tidy
+
+# Создаем vendor директорию
+RUN go mod vendor
+
+# Собираем приложение с vendor
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
-    -ldflags='-w -s -extldflags "-static"' \
-    -a -installsuffix cgo \
+    -mod=vendor \
+    -ldflags='-w -s' \
     -o fileserver \
     ./cmd/fileserver
 
