@@ -4,7 +4,7 @@ package repository
 import (
 	"context"
 
-	"github.com/printprince/vitalem/FileServerService/internal/model"
+	"fileserver/internal/model"
 
 	"gorm.io/gorm"
 )

@@ -3,9 +3,9 @@ package router
 import (
 	"net/http"
 
-	"github.com/printprince/vitalem/FileServerService/internal/http/handler"
-	"github.com/printprince/vitalem/FileServerService/internal/http/middleware"
-	"github.com/printprince/vitalem/FileServerService/internal/service"
+	"fileserver/internal/http/handler"
+	"fileserver/internal/http/middleware"
+	"fileserver/internal/service"
 
 	"github.com/go-chi/chi/v5"
 )
