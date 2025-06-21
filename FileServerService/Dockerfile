@@ -23,6 +23,9 @@ COPY FileServerService/ .
 # Обновляем зависимости
 RUN go mod tidy
 
+# Отладочная информация
+RUN pwd && ls -la && cat go.mod && go env
+
 # Включаем Go modules и собираем приложение
 RUN GO111MODULE=on CGO_ENABLED=0 GOOS=linux go build \
     -ldflags='-w -s -extldflags "-static"' \
