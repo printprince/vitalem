@@ -11,6 +11,7 @@ ENV GO111MODULE=on
 ENV GOPATH=
 ENV CGO_ENABLED=0
 ENV GOOS=linux
+ENV GOPROXY=direct
 
 # Копируем go.mod и go.sum сначала для лучшего кэширования
 COPY go.mod go.sum ./
@@ -26,7 +27,7 @@ RUN echo "=== Go version ===" && go version && \
     echo "=== Go env ===" && go env && \
     echo "=== Go mod graph ===" && go mod graph && \
     echo "=== Directory structure ===" && find . -name "*.go" | head -10 && \
-    go mod tidy && go build -mod=mod -o fileserver ./cmd/fileserver
+    go mod tidy && go build -mod=mod -o fileserver cmd/fileserver/main.go
 
 # Финальный образ
 FROM alpine:latest
