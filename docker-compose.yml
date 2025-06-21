@@ -420,6 +420,7 @@ services:
       dockerfile: ./FileServerService/Dockerfile
     container_name: fileserver_service
     environment:
+      - SERVER_PORT=8087
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
