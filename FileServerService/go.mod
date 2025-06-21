@@ -2,6 +2,8 @@ module github.com/printprince/vitalem/FileServerService
 
 go 1.21
 
+replace github.com/printprince/vitalem/FileServerService => ./
+
 require (
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/golang-jwt/jwt/v5 v5.0.0
