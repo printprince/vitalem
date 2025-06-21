@@ -416,8 +416,8 @@ services:
   # Интегрируется с identity_service для авторизации
   fileserver_service:
     build:
-      context: ./FileServerService
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./FileServerService/Dockerfile
     container_name: fileserver_service
     environment:
       - DB_HOST=postgres
