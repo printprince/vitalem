@@ -1,38 +1,61 @@
-# Build stage
+# Используем официальный образ Go
 FROM golang:1.21-alpine AS builder
 
-# Установка git и необходимых инструментов
-RUN apk add --no-cache git gcc musl-dev
+# Устанавливаем необходимые пакеты
+RUN apk add --no-cache git ca-certificates tzdata curl gcc musl-dev
 
-# Установка рабочей директории
+# Создаем пользователя
+RUN adduser -D -s /bin/sh -u 1001 appuser
+
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копирование файлов зависимостей
+# Копируем go.mod и go.sum
 COPY go.mod go.sum ./
 
-# Загрузка зависимостей
-RUN go mod download && go mod verify
+# Скачиваем зависимости
+RUN go mod download
 
-# Копирование исходного кода
+# Копируем весь исходный код
 COPY . .
 
-# Сборка приложения
-RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
+# Собираем приложение
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags='-w -s -extldflags "-static"' \
+    -a -installsuffix cgo \
+    -o fileserver \
+    ./cmd/fileserver
 
-# Final stage
+# Финальная стадия
 FROM alpine:latest
 
-# Установка необходимых пакетов
-RUN apk --no-cache add ca-certificates tzdata
+# Устанавливаем необходимые пакеты
+RUN apk --no-cache add ca-certificates curl
 
-# Установка рабочей директории
+# Создаем пользователя
+RUN adduser -D -s /bin/sh -u 1001 appuser
+
+# Создаем директории
+RUN mkdir -p /app && chown appuser:appuser /app
+
+# Копируем бинарник
+COPY --from=builder --chown=appuser:appuser /app/fileserver /app/fileserver
+
+# Копируем миграции
+COPY --from=builder --chown=appuser:appuser /app/migrations /app/migrations
+
+# Переключаемся на пользователя
+USER appuser
+
+# Устанавливаем рабочую директорию
 WORKDIR /app
 
-# Копирование бинарного файла из builder
-COPY --from=builder /app/fileserver ./
+# Открываем порт
+EXPOSE 8080
 
-# Открытие порта
-EXPOSE 8081
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost:8080/health || exit 1
 
-# Запуск приложения
+# Запускаем приложение
 CMD ["./fileserver"]

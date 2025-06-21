@@ -1,69 +1,74 @@
 package logger
 
 import (
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
+	"log"
+	"os"
 )
 
-var log *zap.SugaredLogger
+var (
+	InfoLogger  *log.Logger
+	ErrorLogger *log.Logger
+)
 
 // InitLogger инициализирует глобальный логгер
-func InitLogger(isProduction bool) {
-	var cfg zap.Config
-
-	if isProduction {
-		cfg = zap.NewProductionConfig()
-		cfg.OutputPaths = []string{"stdout"}
-		cfg.ErrorOutputPaths = []string{"stderr"}
-		cfg.EncoderConfig.TimeKey = "timestamp"
-		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
-	} else {
-		cfg = zap.NewDevelopmentConfig()
-	}
-
-	logger, err := cfg.Build()
-	if err != nil {
-		panic("cannot initialize zap logger: " + err.Error())
-	}
-
-	log = logger.Sugar()
+func InitLogger(production bool) {
+	InfoLogger = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLogger = log.New(os.Stderr, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 // Sync очищает буферы логгера
 func Sync() {
-	_ = log.Sync()
+	// Для простого logger'а ничего не нужно делать
 }
 
 // Exportируемые функции логгирования
 
-func Info(args ...interface{}) {
-	log.Info(args...)
+func Info(msg string) {
+	if InfoLogger != nil {
+		InfoLogger.Println(msg)
+	}
 }
 
-func Infof(template string, args ...interface{}) {
-	log.Infof(template, args...)
+func Infof(format string, args ...interface{}) {
+	if InfoLogger != nil {
+		InfoLogger.Printf(format, args...)
+	}
 }
 
-func Error(args ...interface{}) {
-	log.Error(args...)
+func Error(msg string) {
+	if ErrorLogger != nil {
+		ErrorLogger.Println(msg)
+	}
 }
 
-func Errorf(template string, args ...interface{}) {
-	log.Errorf(template, args...)
+func Errorf(format string, args ...interface{}) {
+	if ErrorLogger != nil {
+		ErrorLogger.Printf(format, args...)
+	}
 }
 
-func Warn(args ...interface{}) {
-	log.Warn(args...)
+func Warn(msg string) {
+	if InfoLogger != nil {
+		InfoLogger.Println("WARN: " + msg)
+	}
 }
 
-func Warnf(template string, args ...interface{}) {
-	log.Warnf(template, args...)
+func Warnf(format string, args ...interface{}) {
+	if InfoLogger != nil {
+		InfoLogger.Printf("WARN: "+format, args...)
+	}
 }
 
-func Fatal(args ...interface{}) {
-	log.Fatal(args...)
+func Fatal(msg string) {
+	if ErrorLogger != nil {
+		ErrorLogger.Println("FATAL: " + msg)
+	}
+	os.Exit(1)
 }
 
-func Fatalf(template string, args ...interface{}) {
-	log.Fatalf(template, args...)
+func Fatalf(format string, args ...interface{}) {
+	if ErrorLogger != nil {
+		ErrorLogger.Printf("FATAL: "+format, args...)
+	}
+	os.Exit(1)
 }

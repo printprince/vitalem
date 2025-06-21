@@ -25,12 +25,13 @@ func NewMinioClient(cfg config.MinIOConfig) (*MinioClient, error) {
 
 	// Проверка существования бакета и создание, если надо
 	ctx := context.Background()
-	exists, errBucketExists := client.BucketExists(ctx, "fileserver")
+	bucketName := "vitalem-files"
+	exists, errBucketExists := client.BucketExists(ctx, bucketName)
 	if errBucketExists != nil {
 		return nil, errBucketExists
 	}
 	if !exists {
-		err = client.MakeBucket(ctx, "fileserver", minio.MakeBucketOptions{})
+		err = client.MakeBucket(ctx, bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			return nil, err
 		}
@@ -38,7 +39,7 @@ func NewMinioClient(cfg config.MinIOConfig) (*MinioClient, error) {
 
 	return &MinioClient{
 		client: client,
-		bucket: "fileserver",
+		bucket: bucketName,
 	}, nil
 }
 
@@ -61,10 +62,16 @@ func (m *MinioClient) DownloadFile(ctx context.Context, objectName string) (io.R
 	if err != nil {
 		return nil, err
 	}
-	// Пробуем прочитать 1 байт чтобы убедиться, что объект существует
+	// Пробуем прочитать метаинформацию чтобы убедиться, что объект существует
 	_, err = object.Stat()
 	if err != nil {
 		return nil, err
 	}
 	return object, nil
+}
+
+// DeleteFile удаляет файл из MinIO
+func (m *MinioClient) DeleteFile(ctx context.Context, objectName string) error {
+	err := m.client.RemoveObject(ctx, m.bucket, objectName, minio.RemoveObjectOptions{})
+	return err
 }

@@ -11,6 +11,7 @@ import (
 
 type Sender interface {
 	Send(message string) error
+	SendMarkdown(message string) error
 }
 
 type TelegramSender struct {
@@ -28,11 +29,23 @@ func NewTelegramSender(cfg *config.TelegramConfig) Sender {
 }
 
 func (t *TelegramSender) Send(message string) error {
+	return t.sendMessage(message, "")
+}
+
+func (t *TelegramSender) SendMarkdown(message string) error {
+	return t.sendMessage(message, "MarkdownV2")
+}
+
+func (t *TelegramSender) sendMessage(message, parseMode string) error {
 	url := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", t.botToken)
 
-	payload := map[string]string{
+	payload := map[string]interface{}{
 		"chat_id": t.chatID,
 		"text":    message,
+	}
+
+	if parseMode != "" {
+		payload["parse_mode"] = parseMode
 	}
 
 	data, err := json.Marshal(payload)

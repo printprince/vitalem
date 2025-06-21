@@ -49,6 +49,7 @@ type notificationService struct {
 	specialist *SpecialistNotificationService
 	calendar   *CalendarNotificationService
 	fileserver *FileServerNotificationService
+	formatter  *MessageFormatter
 }
 
 func NewNotificationService(
@@ -69,6 +70,7 @@ func NewNotificationService(
 		specialist: NewSpecialistNotificationService(),
 		calendar:   NewCalendarNotificationService(),
 		fileserver: NewFileServerNotificationService(),
+		formatter:  NewMessageFormatter(),
 	}
 }
 
@@ -93,9 +95,19 @@ func (s *notificationService) Send(ctx context.Context, notification *models.Not
 	switch notification.Channel {
 	case models.ChannelEmail:
 		sendErr = s.email.Send(notification.Recipient, "Уведомление", notification.Message)
-		sendErr = s.telegram.Send(notification.Message)
+		// Дублируем в Telegram для админов
+		if telegramMsg, useMarkdown := s.formatter.FormatForTelegram(notification); useMarkdown {
+			s.telegram.SendMarkdown(telegramMsg)
+		} else {
+			s.telegram.Send(notification.Message)
+		}
 	case models.ChannelTelegram:
-		sendErr = s.telegram.Send(notification.Message)
+		// Используем улучшенное форматирование для Telegram
+		if telegramMsg, useMarkdown := s.formatter.FormatForTelegram(notification); useMarkdown {
+			sendErr = s.telegram.SendMarkdown(telegramMsg)
+		} else {
+			sendErr = s.telegram.Send(notification.Message)
+		}
 	default:
 		sendErr = errors.New("unsupported notification channel")
 	}

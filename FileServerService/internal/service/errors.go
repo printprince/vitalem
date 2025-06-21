@@ -2,5 +2,10 @@ package service
 
 import "errors"
 
-// ErrForbidden — используется, когда пользователь пытается получить доступ к чужим данным.
-var ErrForbidden = errors.New("access forbidden")
+var (
+	ErrForbidden    = errors.New("access forbidden")
+	ErrNotFound     = errors.New("file not found")
+	ErrInvalidInput = errors.New("invalid input")
+	ErrUploadFailed = errors.New("file upload failed")
+	ErrDeleteFailed = errors.New("file delete failed")
+)

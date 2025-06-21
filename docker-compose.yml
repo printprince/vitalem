@@ -142,13 +142,20 @@ services:
     image: docker.elastic.co/beats/filebeat:7.17.0
     container_name: filebeat
     user: root
+    command: >
+      bash -c "
+        cp /tmp/filebeat.yml /usr/share/filebeat/filebeat.yml &&
+        chmod 600 /usr/share/filebeat/filebeat.yml &&
+        filebeat -e
+      "
     volumes:
-      - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./filebeat/filebeat.yml:/tmp/filebeat.yml:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log/docker:/var/log/docker:ro
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     networks:
       - app-network
     logging:
@@ -404,6 +411,74 @@ services:
         max-size: "10m"
         max-file: "3"
 
+  # FileServer Service - сервис для хранения и управления файлами
+  # Использует MinIO для хранения файлов и PostgreSQL для метаданных
+  # Интегрируется с identity_service для авторизации
+  fileserver_service:
+    build:
+      context: ./FileServerService
+      dockerfile: Dockerfile
+    container_name: vitalem_fileserver
+    environment:
+      - APP_ENV=development
+      - SERVER_PORT=8080
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=postgres
+      - DB_PASSWORD=61324
+      - DB_NAME=vitalem_db
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_USE_SSL=false
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+    ports:
+      - "8807:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # MinIO - S3-совместимое объектное хранилище для файлов
+  # Используется FileServerService для хранения загруженных файлов
+  minio:
+    image: minio/minio:latest
+    container_name: vitalem_minio
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    command: server /data --console-address ":9001"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 networks:
   app-network:
     driver: bridge
@@ -412,3 +487,4 @@ volumes:
   postgres_data:
   elasticsearch_data:
   rabbitmq_data:
+  minio_data:

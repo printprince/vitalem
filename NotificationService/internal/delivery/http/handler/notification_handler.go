@@ -29,24 +29,50 @@ func (h *NotificationHandler) RegisterRoutes(g *echo.Group) {
 	g.GET("/notifications/my", h.GetMyNotifications)
 }
 
+// CreateNotificationRequest — структура запроса для создания уведомления
+type CreateNotificationRequest struct {
+	Type        models.NotificationType    `json:"type" binding:"required"`
+	Channel     models.NotificationChannel `json:"channel" binding:"required"`
+	RecipientID uuid.UUID                  `json:"recipientId" binding:"required"`
+	Recipient   string                     `json:"recipient" binding:"required"`
+	Message     string                     `json:"message,omitempty"`
+	Metadata    interface{}                `json:"metadata,omitempty"`
+}
+
 // Create создает новое уведомление
 func (h *NotificationHandler) Create(c echo.Context) error {
-	var n models.Notification
+	var req CreateNotificationRequest
 
-	if err := c.Bind(&n); err != nil {
+	if err := c.Bind(&req); err != nil {
 		return utils.JSONError(c, http.StatusBadRequest, "invalid request body")
 	}
 
 	// Проверка обязательных полей (но message может быть пустым!)
-	if n.RecipientID == uuid.Nil || n.Recipient == "" || n.Type == "" || n.Channel == "" {
+	if req.RecipientID == uuid.Nil || req.Recipient == "" || req.Type == "" || req.Channel == "" {
 		return utils.JSONError(c, http.StatusBadRequest, "missing required fields")
 	}
 
-	if err := h.service.Send(c.Request().Context(), &n); err != nil {
+	// Создаем уведомление
+	notification := &models.Notification{
+		Type:        req.Type,
+		Channel:     req.Channel,
+		RecipientID: req.RecipientID,
+		Recipient:   req.Recipient,
+		Message:     req.Message,
+	}
+
+	// Устанавливаем метаданные если переданы
+	if req.Metadata != nil {
+		if err := notification.SetMetadata(req.Metadata); err != nil {
+			return utils.JSONError(c, http.StatusBadRequest, "invalid metadata format")
+		}
+	}
+
+	if err := h.service.Send(c.Request().Context(), notification); err != nil {
 		return utils.JSONError(c, http.StatusInternalServerError, err.Error())
 	}
 
-	return c.JSON(http.StatusCreated, n)
+	return c.JSON(http.StatusCreated, notification)
 }
 
 // GetByID возвращает уведомление по ID

@@ -11,24 +11,24 @@ import (
 type FileRepository interface {
 	Save(ctx context.Context, file *model.File) error
 	GetByID(ctx context.Context, id string) (*model.File, error)
+	Update(ctx context.Context, file *model.File) error
 	Delete(ctx context.Context, id string) error
 	ListByUserID(ctx context.Context, userID string) ([]model.File, error)
-	Update(ctx context.Context, file *model.File) error
 }
 
-type fileRepo struct {
+type fileRepository struct {
 	db *gorm.DB
 }
 
 func NewFileRepository(db *gorm.DB) FileRepository {
-	return &fileRepo{db: db}
+	return &fileRepository{db: db}
 }
 
-func (r *fileRepo) Save(ctx context.Context, file *model.File) error {
+func (r *fileRepository) Save(ctx context.Context, file *model.File) error {
 	return r.db.WithContext(ctx).Create(file).Error
 }
 
-func (r *fileRepo) GetByID(ctx context.Context, id string) (*model.File, error) {
+func (r *fileRepository) GetByID(ctx context.Context, id string) (*model.File, error) {
 	var file model.File
 	err := r.db.WithContext(ctx).First(&file, "id = ?", id).Error
 	if err != nil {
@@ -37,18 +37,16 @@ func (r *fileRepo) GetByID(ctx context.Context, id string) (*model.File, error) 
 	return &file, nil
 }
 
-func (r *fileRepo) Delete(ctx context.Context, id string) error {
+func (r *fileRepository) Update(ctx context.Context, file *model.File) error {
+	return r.db.WithContext(ctx).Save(file).Error
+}
+
+func (r *fileRepository) Delete(ctx context.Context, id string) error {
 	return r.db.WithContext(ctx).Delete(&model.File{}, "id = ?", id).Error
 }
 
-func (r *fileRepo) ListByUserID(ctx context.Context, userID string) ([]model.File, error) {
+func (r *fileRepository) ListByUserID(ctx context.Context, userID string) ([]model.File, error) {
 	var files []model.File
 	err := r.db.WithContext(ctx).Where("user_id = ?", userID).Find(&files).Error
 	return files, err
-}
-
-func (r *fileRepo) Update(ctx context.Context, file *model.File) error {
-	return r.db.WithContext(ctx).Model(&model.File{}).
-		Where("id = ?", file.ID).
-		Updates(file).Error
 }

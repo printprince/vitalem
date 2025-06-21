@@ -1,16 +1,17 @@
 package handler
 
 import (
-	"FileServerService/internal/http/middleware"
-	"FileServerService/internal/model"
-	"FileServerService/internal/service"
 	"bytes"
 	"encoding/json"
-	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 	"io"
 	"net/http"
 	"net/url"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/vitalem/fileserver/internal/http/middleware"
+	"github.com/vitalem/fileserver/internal/model"
+	"github.com/vitalem/fileserver/internal/service"
 )
 
 type FileHandler struct {
@@ -66,11 +67,13 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		contentType := fileHeader.Header.Get("Content-Type")
 
 		f := &model.File{
-			Name:        fileHeader.Filename,
-			Size:        fileHeader.Size,
-			ContentType: contentType,
-			UserID:      userID,
+			Name:         fileHeader.Filename,
+			OriginalName: fileHeader.Filename,
+			Size:         fileHeader.Size,
+			UserID:       userID,
+			Bucket:       "files", // default bucket
 		}
+		f.SetContentType(contentType)
 
 		err = h.Service.Upload(r.Context(), f, bytes.NewReader(fileBytes), fileHeader.Size)
 		if err != nil {
@@ -226,7 +229,7 @@ func (h *FileHandler) Preview(w http.ResponseWriter, r *http.Request) {
 	}
 	defer reader.Close()
 
-	w.Header().Set("Content-Type", file.ContentType)
+	w.Header().Set("Content-Type", file.ContentType())
 	w.Header().Set("Content-Disposition", "inline; filename=\""+file.Name+"\"")
 	_, err = io.Copy(w, reader)
 	if err != nil {

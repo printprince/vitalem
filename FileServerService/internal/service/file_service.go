@@ -37,17 +37,16 @@ func NewFileService(repo repository.FileRepository, minioClient *storage.MinioCl
 }
 
 // Upload сохраняет информацию о файле и присваивает ID и время загрузки.
-// Добавляем параметр fileBytes для загрузки в MinIO
 func (s *fileService) Upload(ctx context.Context, file *model.File, fileReader io.Reader, fileSize int64) error {
 	// Генерация ID и установка времени загрузки
 	file.ID = uuid.New()
-	file.UploadedAt = time.Now()
+	file.CreatedAt = time.Now()
 
 	// Генерация имени объекта для хранения в MinIO
-	objectName := file.ID.String() + "_" + file.Name
+	objectName := file.ID.String() + "_" + file.OriginalName
 
 	// Загружаем файл в MinIO
-	err := s.minioClient.UploadFile(ctx, objectName, fileReader, fileSize, file.ContentType)
+	err := s.minioClient.UploadFile(ctx, objectName, fileReader, fileSize, file.MimeType)
 	if err != nil {
 		return err
 	}
@@ -66,6 +65,20 @@ func (s *fileService) Get(ctx context.Context, id string) (*model.File, error) {
 
 // Delete удаляет файл по его ID.
 func (s *fileService) Delete(ctx context.Context, id string) error {
+	// Сначала получаем файл для удаления из MinIO
+	file, err := s.repo.GetByID(ctx, id)
+	if err != nil {
+		return err
+	}
+
+	// Удаляем из MinIO
+	err = s.minioClient.DeleteFile(ctx, file.Path)
+	if err != nil {
+		// Логируем ошибку, но продолжаем удаление из БД
+		// В продакшене здесь может быть более сложная логика
+	}
+
+	// Удаляем из БД
 	return s.repo.Delete(ctx, id)
 }
 
@@ -85,8 +98,9 @@ func (s *fileService) DownloadFile(ctx context.Context, id string) (io.ReadClose
 		return nil, "", "", err
 	}
 
-	return reader, file.Name, file.ContentType, nil
+	return reader, file.OriginalName, file.MimeType, nil
 }
+
 func (s *fileService) DownloadByPath(ctx context.Context, path string) (io.ReadCloser, error) {
 	return s.minioClient.DownloadFile(ctx, path)
 }
@@ -103,7 +117,7 @@ func (s *fileService) TogglePublic(ctx context.Context, id string, userID uuid.U
 	}
 
 	if file.UserID != userID {
-		return ErrForbidden // ты можешь определить эту ошибку как кастомную
+		return ErrForbidden
 	}
 
 	file.IsPublic = !file.IsPublic
