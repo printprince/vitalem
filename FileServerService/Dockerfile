@@ -26,8 +26,13 @@ RUN go mod vendor
 # Отключаем модули и используем только GOPATH для сборки
 ENV GO111MODULE=off
 ENV GOPATH=/go
+
+# Копируем проект в правильную GOPATH структуру
 RUN mkdir -p /go/src/fileserver
-RUN cp -r . /go/src/fileserver/
+RUN cp -r internal /go/src/fileserver/
+RUN cp -r cmd /go/src/fileserver/
+RUN cp -r migrations /go/src/fileserver/
+RUN cp -r vendor/* /go/src/ 2>/dev/null || true
 
 # Собираем приложение из GOPATH
 WORKDIR /go/src/fileserver
