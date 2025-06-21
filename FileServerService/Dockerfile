@@ -11,13 +11,13 @@ RUN adduser -D -s /bin/sh -u 1001 appuser
 WORKDIR /app
 
 # Копируем go.mod и go.sum
-COPY go.mod go.sum ./
+COPY FileServerService/go.mod FileServerService/go.sum ./
 
 # Скачиваем зависимости
 RUN go mod download
 
 # Копируем весь исходный код
-COPY . .
+COPY FileServerService/ .
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build \
