@@ -18,25 +18,37 @@ ENV GOROOT=""
 ENV GOPROXY=direct
 ENV GOSUMDB=off
 
-# Очищаем весь кэш Go
-RUN go clean -cache -modcache -i -r
+# Создаем go.mod файлы для каждого internal пакета
+RUN echo 'module fileserver/internal/config' > internal/config/go.mod
+RUN echo 'go 1.24' >> internal/config/go.mod
 
-# Отладка Go окружения и файловой структуры
-RUN go env | grep -E "(GOPATH|GOROOT|GO111MODULE|GOMOD)"
-RUN pwd && ls -la
-RUN echo "=== Checking internal directory ==="
-RUN ls -la internal/
-RUN echo "=== Checking config directory ==="
-RUN ls -la internal/config/ || echo "Config directory does not exist"
-RUN echo "=== Checking middleware directory ==="
-RUN ls -la internal/http/middleware/ || echo "Middleware directory does not exist"
-RUN echo "=== Finding all .go files ==="
-RUN find . -name "*.go" | head -10
+RUN echo 'module fileserver/internal/http/middleware' > internal/http/middleware/go.mod
+RUN echo 'go 1.24' >> internal/http/middleware/go.mod
 
-# Собираем приложение с полной очисткой
+RUN echo 'module fileserver/internal/http/logger' > internal/http/logger/go.mod
+RUN echo 'go 1.24' >> internal/http/logger/go.mod
+
+RUN echo 'module fileserver/internal/http/router' > internal/http/router/go.mod
+RUN echo 'go 1.24' >> internal/http/router/go.mod
+
+RUN echo 'module fileserver/internal/repository' > internal/repository/go.mod
+RUN echo 'go 1.24' >> internal/repository/go.mod
+
+RUN echo 'module fileserver/internal/service' > internal/service/go.mod
+RUN echo 'go 1.24' >> internal/service/go.mod
+
+RUN echo 'module fileserver/internal/storage' > internal/storage/go.mod
+RUN echo 'go 1.24' >> internal/storage/go.mod
+
+RUN echo 'module fileserver/internal/model' > internal/model/go.mod
+RUN echo 'go 1.24' >> internal/model/go.mod
+
+RUN echo 'module fileserver/internal/http/handler' > internal/http/handler/go.mod
+RUN echo 'go 1.24' >> internal/http/handler/go.mod
+
+# Собираем приложение
 RUN go mod download
-RUN go clean -cache
-RUN go build -a -o fileserver ./cmd/fileserver
+RUN go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
