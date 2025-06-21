@@ -21,8 +21,12 @@ RUN go mod download
 # Копируем все файлы
 COPY . .
 
-# Собираем приложение
-RUN go build -o fileserver ./cmd/fileserver
+# Отладочная информация и сборка
+RUN echo "=== Go version ===" && go version && \
+    echo "=== Go env ===" && go env && \
+    echo "=== Go mod graph ===" && go mod graph && \
+    echo "=== Directory structure ===" && find . -name "*.go" | head -10 && \
+    go mod tidy && go build -mod=mod -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
