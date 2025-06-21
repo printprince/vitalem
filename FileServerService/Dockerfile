@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 # Устанавливаем необходимые пакеты
 RUN apk add --no-cache git ca-certificates tzdata curl
@@ -11,15 +11,17 @@ ENV GO111MODULE=on
 # Копируем только FileServerService
 COPY FileServerService/ .
 
+# Переинициализируем модуль
+RUN rm -f go.mod go.sum
+RUN go mod init fileserver
+RUN go mod tidy
+
 # Отладочная информация
 RUN pwd
 RUN ls -la
 RUN ls -la internal/
 RUN find internal -type d
 RUN find internal -name "*.go" | head -10
-
-# Скачиваем зависимости
-RUN go mod download
 
 # Собираем приложение
 RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
