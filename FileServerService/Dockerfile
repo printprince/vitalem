@@ -1,4 +1,4 @@
-FROM golang:1.24-alpine AS builder
+FROM golang:1.22-alpine AS builder
 
 # Устанавливаем необходимые пакеты включая git
 RUN apk add --no-cache git ca-certificates tzdata curl
@@ -8,13 +8,21 @@ WORKDIR /app
 # Копируем все файлы (теперь context = FileServerService)
 COPY . .
 
-# Принудительно отключаем все пути Go и используем только модули
+# Полностью переопределяем Go окружение
 ENV GO111MODULE=on
 ENV GOPATH=""
+ENV GOROOT=""
+ENV GOPROXY=direct
+ENV GOSUMDB=off
 
-# Собираем приложение
+# Отладка Go окружения
+RUN go env | grep -E "(GOPATH|GOROOT|GO111MODULE|GOMOD)"
+RUN pwd && ls -la
+RUN cat go.mod
+
+# Собираем приложение с принудительным использованием модулей
 RUN go mod download
-RUN go build -o fileserver ./cmd/fileserver
+RUN go build -mod=mod -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
