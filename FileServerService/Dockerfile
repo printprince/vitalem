@@ -12,12 +12,14 @@ RUN ls -la internal/
 # Проверяем go.mod
 RUN cat go.mod
 
+# Создаем go.work для принудительной работы с модулями
+RUN echo "go 1.24" > go.work
+RUN echo "" >> go.work
+RUN echo "use ." >> go.work
+
 # Проверяем, что Go видит модуль
 RUN go list -m
-RUN go list ./...
-
-# Пробуем собрать
-RUN go build -o fileserver ./cmd/fileserver
+RUN GOWORK=go.work go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
