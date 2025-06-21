@@ -6,12 +6,23 @@ RUN apk add --no-cache git ca-certificates tzdata curl
 
 WORKDIR /app
 
+# Включаем Go modules принудительно и отключаем GOPATH
+ENV GO111MODULE=on
+ENV GOPATH=
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+
+# Копируем go.mod и go.sum сначала для лучшего кэширования
+COPY go.mod go.sum ./
+
+# Скачиваем зависимости
+RUN go mod download
+
 # Копируем все файлы
 COPY . .
 
-# Простая сборка с модулями
-RUN go mod tidy && go mod download
-RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
+# Собираем приложение
+RUN go build -o fileserver ./cmd/fileserver
 
 # Финальный образ
 FROM alpine:latest
