@@ -416,36 +416,35 @@ services:
   # Интегрируется с identity_service для авторизации
   fileserver_service:
     build:
-      context: ./FileServerService
-      dockerfile: Dockerfile
-    container_name: vitalem_fileserver
+      context: .
+      dockerfile: ./FileServerService/Dockerfile
+    container_name: fileserver_service
     environment:
-      - APP_ENV=development
-      - SERVER_PORT=8080
       - DB_HOST=postgres
       - DB_PORT=5432
       - DB_USER=postgres
       - DB_PASSWORD=61324
       - DB_NAME=vitalem_db
+      - DB_SSLMODE=disable
+      - LOGGER_SERVICE_URL=http://logger_service:8802
       - MINIO_ENDPOINT=minio:9000
       - MINIO_ACCESS_KEY=minioadmin
       - MINIO_SECRET_KEY=minioadmin
       - MINIO_USE_SSL=false
       - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
+      - LOG_LEVEL=warn
     ports:
-      - "8808:8080"
+      - "8087:8087"
     depends_on:
       postgres:
         condition: service_healthy
       minio:
         condition: service_healthy
+      logger_service:
+        condition: service_healthy
     networks:
       - app-network
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     logging:
       driver: json-file
       options:
