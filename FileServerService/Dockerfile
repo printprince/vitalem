@@ -5,8 +5,9 @@ RUN apk add --no-cache git ca-certificates tzdata curl
 
 WORKDIR /app
 
-# Принудительно включаем Go modules
+# Принудительно включаем Go modules и отключаем GOPATH
 ENV GO111MODULE=on
+ENV GOPATH=""
 
 # Копируем только FileServerService
 COPY FileServerService/ .
@@ -14,8 +15,9 @@ COPY FileServerService/ .
 # Скачиваем зависимости
 RUN go mod download
 
-# Собираем приложение
-RUN CGO_ENABLED=0 GOOS=linux go build -o fileserver ./cmd/fileserver
+# Собираем приложение через go install
+RUN CGO_ENABLED=0 GOOS=linux go install -mod=mod ./cmd/fileserver
+RUN cp /root/go/bin/fileserver ./fileserver
 
 # Финальный образ
 FROM alpine:latest
