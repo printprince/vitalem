@@ -7,11 +7,12 @@ import (
 	"net/http"
 	"net/url"
 
+	"fileserver/internal/http/middleware"
+	"fileserver/internal/model"
+	"fileserver/internal/service"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/printprince/vitalem/FileServerService/internal/http/middleware"
-	"github.com/printprince/vitalem/FileServerService/internal/model"
-	"github.com/printprince/vitalem/FileServerService/internal/service"
 )
 
 type FileHandler struct {

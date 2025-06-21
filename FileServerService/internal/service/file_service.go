@@ -6,10 +6,11 @@ import (
 	"io"
 	"time"
 
+	"fileserver/internal/model"
+	"fileserver/internal/repository"
+	"fileserver/internal/storage"
+
 	"github.com/google/uuid"
-	"github.com/printprince/vitalem/FileServerService/internal/model"
-	"github.com/printprince/vitalem/FileServerService/internal/repository"
-	"github.com/printprince/vitalem/FileServerService/internal/storage"
 )
 
 // FileService описывает бизнес-логику работы с файлами.

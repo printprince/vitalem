@@ -4,9 +4,10 @@ import (
 	"context"
 	"io"
 
+	"fileserver/internal/config"
+
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
-	"github.com/printprince/vitalem/FileServerService/internal/config"
 )
 
 type MinioClient struct {
