@@ -49,6 +49,12 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверяем параметр is_public (по умолчанию true - файлы публичные)
+	isPublic := true
+	if r.FormValue("is_public") == "false" {
+		isPublic = false
+	}
+
 	var uploadedFiles []*model.File
 
 	for _, fileHeader := range files {
@@ -72,7 +78,8 @@ func (h *FileHandler) Upload(w http.ResponseWriter, r *http.Request) {
 			OriginalName: fileHeader.Filename,
 			Size:         fileHeader.Size,
 			UserID:       userID,
-			Bucket:       "files", // default bucket
+			Bucket:       "files",  // default bucket
+			IsPublic:     isPublic, // устанавливаем публичность на основе параметра
 		}
 		f.SetContentType(contentType)
 
