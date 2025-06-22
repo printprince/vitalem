@@ -12,6 +12,7 @@ import (
 	"fileserver/internal/config"
 	"fileserver/internal/http/logger"
 	"fileserver/internal/http/router"
+	"fileserver/internal/model"
 	"fileserver/internal/repository"
 	"fileserver/internal/service"
 	"fileserver/internal/storage"
@@ -33,6 +34,16 @@ func main() {
 	if err != nil {
 		logger.Fatalf("failed to connect to database: %v", err)
 	}
+
+	logger.Info("Successfully connected to database")
+
+	// Миграция моделей
+	err = db.AutoMigrate(&model.File{})
+	if err != nil {
+		logger.Fatalf("failed to run migrations: %v", err)
+	}
+
+	logger.Info("Database migrations completed successfully")
 
 	// Инициализация MinIO
 	minioClient, err := storage.NewMinioClient(cfg.MinIO)
