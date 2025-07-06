@@ -444,6 +444,11 @@ services:
         condition: service_healthy
       logger_service:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
     networks:
       - app-network
     logging:
@@ -451,6 +456,86 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
+
+  # Gateway Service - единая точка входа для всех микросервисов
+  # Предоставляет единый API для фронтенда с простыми URL
+  # Автоматически проксирует запросы к соответствующим микросервисам
+  gateway_service:
+    build:
+      context: .
+      dockerfile: ./gateway_service/Dockerfile
+    container_name: gateway_service
+    environment:
+      - GATEWAY_HOST=0.0.0.0
+      - GATEWAY_PORT=8800
+      - JWT_SECRET=4324pkh23sk4jh342alhdlfl2sdjf
+      - JWT_EXPIRE=168
+      - LOG_LEVEL=warn
+      # URLs микросервисов
+      - IDENTITY_SERVICE_URL=http://identity_service:8801
+      - PATIENT_SERVICE_URL=http://patient_service:8804
+      - SPECIALIST_SERVICE_URL=http://specialist_service:8803
+      - APPOINTMENT_SERVICE_URL=http://appointment_service:8805
+      - NOTIFICATION_SERVICE_URL=http://notification_service:8806
+      - FILESERVER_SERVICE_URL=http://fileserver_service:8087
+      - LOGGER_SERVICE_URL=http://logger_service:8802
+    ports:
+      - "8800:8800"
+    depends_on:
+      identity_service:
+        condition: service_healthy
+      specialist_service:
+        condition: service_started
+      patient_service:
+        condition: service_started
+      appointment_service:
+        condition: service_healthy
+      notification_service:
+        condition: service_started
+      fileserver_service:
+        condition: service_started
+      logger_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ps aux | grep -v grep | grep -q gateway"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Swagger UI - веб-интерфейс для документации API Gateway
+  # Отображает Swagger/OpenAPI документацию в удобном интерактивном виде
+  # Позволяет тестировать API напрямую из браузера
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    container_name: vitalem_swagger_ui
+    environment:
+      - SWAGGER_JSON=/swagger.yaml
+      - DOC_EXPANSION=none
+      - DEEP_LINKING=true
+      - DISPLAY_REQUEST_DURATION=true
+      - SHOW_EXTENSIONS=true
+      - SHOW_COMMON_EXTENSIONS=true
+    volumes:
+      - ./gateway_service/docs/swagger.yaml:/swagger.yaml:ro
+    ports:
+      - "8808:8080"
+    depends_on:
+      gateway_service:
+        condition: service_healthy
+    networks:
+      - app-network
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "2"
 
   # MinIO - S3-совместимое объектное хранилище для файлов
   # Используется FileServerService для хранения загруженных файлов

@@ -1,0 +1,2586 @@
+basePath: /
+host: localhost:8800
+info:
+  contact: {}
+  description: Единая точка входа для всех микросервисов медицинской платформы Vitalem.
+    Упрощает взаимодействие с backend сервисами через простые и понятные REST API.
+  title: Vitalem API Gateway
+  version: 1.0.0
+paths:
+  /appointments:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка записей текущего пользователя
+      parameters:
+      - default: 10
+        description: Количество записей
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список записей
+          schema:
+            properties:
+              appointments:
+                type: array
+              total:
+                type: integer
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Мои записи
+      tags:
+      - Записи
+  /appointments/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получение детальной информации о конкретной записи
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные записи
+          schema:
+            properties:
+              doctor_id:
+                type: string
+              end_time:
+                type: string
+              id:
+                type: string
+              patient_id:
+                type: string
+              start_time:
+                type: string
+              status:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Запись не найдена
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Информация о записи
+      tags:
+      - Записи
+  /appointments/{id}/book:
+    post:
+      consumes:
+      - application/json
+      description: Бронирование записи к врачу (только для пациентов)
+      parameters:
+      - description: ID слота для записи
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные записи
+        in: body
+        name: appointmentData
+        required: true
+        schema:
+          properties:
+            appointment_type:
+              type: string
+            patient_notes:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Запись забронирована
+          schema:
+            properties:
+              end_time:
+                type: string
+              id:
+                type: string
+              start_time:
+                type: string
+              status:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Только пациенты могут бронировать
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "409":
+          description: Слот уже занят
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Забронировать запись
+      tags:
+      - Записи
+  /appointments/{id}/cancel:
+    post:
+      consumes:
+      - application/json
+      description: Отмена записи к врачу
+      parameters:
+      - description: ID записи
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Запись отменена
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав на отмену
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Запись не найдена
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отменить запись
+      tags:
+      - Записи
+  /appointments/doctors/{id}/available-slots:
+    get:
+      consumes:
+      - application/json
+      description: Получение доступных временных слотов для записи к врачу на конкретную
+        дату
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Дата в формате YYYY-MM-DD
+        example: '"2024-06-15"'
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Доступные слоты
+          schema:
+            properties:
+              slots:
+                type: array
+            type: object
+        "400":
+          description: Неверные параметры
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Врач не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Доступные слоты врача
+      tags:
+      - Записи
+  /appointments/exceptions:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка исключений в расписании врача за период
+      parameters:
+      - description: Дата начала в формате YYYY-MM-DD
+        example: '"2024-06-01"'
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: Дата окончания в формате YYYY-MM-DD
+        example: '"2024-06-30"'
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список исключений
+          schema:
+            properties:
+              exceptions:
+                type: array
+            type: object
+        "400":
+          description: Неверные параметры
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Только врачи могут просматривать исключения
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Исключения врача
+      tags:
+      - Исключения в расписании
+    post:
+      consumes:
+      - application/json
+      description: Добавление исключения в расписание врача (выходной день или изменение
+        часов)
+      parameters:
+      - description: Данные исключения
+        in: body
+        name: exceptionData
+        required: true
+        schema:
+          properties:
+            custom_end_time:
+              type: string
+            custom_start_time:
+              type: string
+            date:
+              type: string
+            reason:
+              type: string
+            type:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Исключение создано
+          schema:
+            properties:
+              date:
+                type: string
+              id:
+                type: string
+              reason:
+                type: string
+              type:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Только врачи могут создавать исключения
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать исключение в расписании
+      tags:
+      - Исключения в расписании
+  /appointments/schedules:
+    get:
+      consumes:
+      - application/json
+      description: Получение всех расписаний текущего врача
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список расписаний
+          schema:
+            properties:
+              schedules:
+                type: array
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Только врачи могут просматривать расписания
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Мои расписания
+      tags:
+      - Расписание
+    post:
+      consumes:
+      - application/json
+      description: Создание нового расписания работы врача
+      parameters:
+      - description: Данные расписания
+        in: body
+        name: scheduleData
+        required: true
+        schema:
+          properties:
+            end_time:
+              type: string
+            name:
+              type: string
+            slot_duration:
+              type: integer
+            start_time:
+              type: string
+            work_days:
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Расписание создано
+          schema:
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              work_days:
+                type: array
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Только врачи могут создавать расписания
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать расписание
+      tags:
+      - Расписание
+  /appointments/schedules/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление расписания врача
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Расписание удалено
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить расписание
+      tags:
+      - Расписание
+    put:
+      consumes:
+      - application/json
+      description: Обновление существующего расписания врача
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Обновленные данные
+        in: body
+        name: scheduleData
+        required: true
+        schema:
+          properties:
+            end_time:
+              type: string
+            name:
+              type: string
+            start_time:
+              type: string
+            work_days:
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Расписание обновлено
+          schema:
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              updated_at:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить расписание
+      tags:
+      - Расписание
+  /appointments/schedules/{id}/generate-slots:
+    post:
+      consumes:
+      - application/json
+      description: Автоматическая генерация временных слотов для расписания врача
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Диапазон дат для генерации
+        in: body
+        name: dateRange
+        required: true
+        schema:
+          properties:
+            end_date:
+              type: string
+            start_date:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Слоты сгенерированы
+          schema:
+            properties:
+              message:
+                type: string
+              slots_created:
+                type: integer
+            type: object
+        "400":
+          description: Неверные параметры
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Генерировать слоты
+      tags:
+      - Расписание
+  /appointments/schedules/{id}/generated-slots:
+    get:
+      consumes:
+      - application/json
+      description: Получение подробной информации о сгенерированных слотах расписания
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Дата начала в формате YYYY-MM-DD
+        example: '"2024-06-01"'
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: Дата окончания в формате YYYY-MM-DD
+        example: '"2024-06-30"'
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Детали слотов
+          schema:
+            properties:
+              period:
+                type: object
+              schedule:
+                type: object
+              slots:
+                type: array
+              summary:
+                type: object
+            type: object
+        "400":
+          description: Неверные параметры
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Детали сгенерированных слотов
+      tags:
+      - Расписание
+  /appointments/schedules/{id}/slots:
+    delete:
+      consumes:
+      - application/json
+      description: Принудительное удаление всех сгенерированных слотов расписания
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Слоты удалены
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить слоты расписания
+      tags:
+      - Расписание
+  /appointments/schedules/{id}/toggle:
+    patch:
+      consumes:
+      - application/json
+      description: Переключение активности расписания врача
+      parameters:
+      - description: ID расписания
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Данные для переключения (опционально)
+        in: body
+        name: toggleData
+        schema:
+          properties:
+            is_active:
+              type: boolean
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Расписание переключено
+          schema:
+            properties:
+              id:
+                type: string
+              is_active:
+                type: boolean
+              message:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Расписание не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Активировать/деактивировать расписание
+      tags:
+      - Расписание
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентификация пользователя по email и паролю. Возвращает JWT токен
+        для последующих запросов.
+      parameters:
+      - description: Данные для входа
+        in: body
+        name: credentials
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный вход
+          schema:
+            properties:
+              token:
+                type: string
+            type: object
+        "400":
+          description: Неверный формат данных
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неверный email или пароль
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Вход в систему
+      tags:
+      - Авторизация
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создание нового аккаунта пользователя (пациент или врач)
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: userData
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            password:
+              type: string
+            role:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Пользователь создан
+          schema:
+            properties:
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные или email уже существует
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Регистрация пользователя
+      tags:
+      - Авторизация
+  /auth/user:
+    get:
+      consumes:
+      - application/json
+      description: Получение информации о текущем авторизованном пользователе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные пользователя
+          schema:
+            properties:
+              email:
+                type: string
+              role:
+                type: string
+              user_id:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Данные текущего пользователя
+      tags:
+      - Авторизация
+  /auth/validate:
+    post:
+      consumes:
+      - application/json
+      description: Проверка действительности JWT токена
+      parameters:
+      - description: Bearer токен
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Токен действителен
+          schema:
+            properties:
+              email:
+                type: string
+              role:
+                type: string
+              user_id:
+                type: string
+            type: object
+        "401":
+          description: Недействительный токен
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Валидация JWT токена
+      tags:
+      - Авторизация
+  /doctors:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка всех активных врачей (публичный доступ)
+      parameters:
+      - default: 10
+        description: Количество записей
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      - description: Фильтр по специализации
+        in: query
+        name: specialization
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список врачей
+          schema:
+            properties:
+              doctors:
+                type: array
+              total:
+                type: integer
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Список врачей
+      tags:
+      - Врачи
+    post:
+      consumes:
+      - application/json
+      description: Создание нового профиля врача (только для авторизованных пользователей)
+      parameters:
+      - description: Данные врача
+        in: body
+        name: doctorData
+        required: true
+        schema:
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            specializations:
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Профиль создан
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать профиль врача
+      tags:
+      - Врачи
+  /doctors/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление профиля врача из системы
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Врач удален
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Врач не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить врача
+      tags:
+      - Врачи
+    get:
+      consumes:
+      - application/json
+      description: Получение детальной информации о враче (публичный доступ)
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные врача
+          schema:
+            properties:
+              first_name:
+                type: string
+              id:
+                type: string
+              last_name:
+                type: string
+              specializations:
+                type: array
+            type: object
+        "404":
+          description: Врач не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Профиль врача
+      tags:
+      - Врачи
+    put:
+      consumes:
+      - application/json
+      description: Обновление существующего профиля врача
+      parameters:
+      - description: ID врача
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Обновленные данные
+        in: body
+        name: doctorData
+        required: true
+        schema:
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль обновлен
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Врач не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль врача
+      tags:
+      - Врачи
+  /files:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка файлов текущего пользователя
+      parameters:
+      - default: 10
+        description: Количество записей
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список файлов
+          schema:
+            properties:
+              files:
+                type: array
+              total:
+                type: integer
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Мои файлы
+      tags:
+      - Файлы
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загрузка нового файла в систему
+      parameters:
+      - description: Файл для загрузки
+        in: formData
+        name: file
+        required: true
+        type: file
+      - description: Описание файла
+        in: formData
+        name: description
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Файл загружен
+          schema:
+            properties:
+              file_name:
+                type: string
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверный формат файла
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "413":
+          description: Файл слишком большой
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Загрузить файл
+      tags:
+      - Файлы
+  /files/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление файла из системы
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Файл удален
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Файл не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить файл
+      tags:
+      - Файлы
+    get:
+      consumes:
+      - application/json
+      description: Получение метаинформации о файле
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Метаданные файла
+          schema:
+            properties:
+              content_type:
+                type: string
+              created_at:
+                type: string
+              id:
+                type: string
+              name:
+                type: string
+              size:
+                type: integer
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Файл не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Информация о файле
+      tags:
+      - Файлы
+  /files/{id}/download:
+    get:
+      consumes:
+      - application/json
+      description: Скачивание файла (для авторизованных пользователей)
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Содержимое файла
+          schema:
+            type: file
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Файл не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Скачать файл
+      tags:
+      - Файлы
+  /files/{id}/preview:
+    get:
+      consumes:
+      - application/json
+      description: Получение предпросмотра файла (для изображений и документов)
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Предпросмотр файла
+          schema:
+            type: file
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Файл не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "415":
+          description: Предпросмотр недоступен для данного типа файла
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Предпросмотр файла
+      tags:
+      - Файлы
+  /files/{id}/visibility:
+    patch:
+      consumes:
+      - application/json
+      description: Переключение статуса публичности файла (публичный/приватный)
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Статус изменен
+          schema:
+            properties:
+              id:
+                type: string
+              is_public:
+                type: boolean
+              message:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Файл не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Изменить публичность файла
+      tags:
+      - Файлы
+  /notifications:
+    post:
+      consumes:
+      - application/json
+      description: Создание нового уведомления (для системных уведомлений)
+      parameters:
+      - description: Данные уведомления
+        in: body
+        name: notificationData
+        required: true
+        schema:
+          properties:
+            channel:
+              type: string
+            message:
+              type: string
+            recipient:
+              type: string
+            recipient_id:
+              type: string
+            type:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Уведомление создано
+          schema:
+            properties:
+              id:
+                type: integer
+              message:
+                type: string
+              type:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать уведомление
+      tags:
+      - Уведомления
+  /notifications/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Получение детальной информации о конкретном уведомлении
+      parameters:
+      - description: ID уведомления
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные уведомления
+          schema:
+            properties:
+              channel:
+                type: string
+              created_at:
+                type: string
+              id:
+                type: integer
+              message:
+                type: string
+              status:
+                type: string
+              type:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Уведомление не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Информация об уведомлении
+      tags:
+      - Уведомления
+  /notifications/{id}/sent:
+    put:
+      consumes:
+      - application/json
+      description: Пометка уведомления как отправленного
+      parameters:
+      - description: ID уведомления
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Уведомление помечено как отправленное
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Уведомление не найдено
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Отметить как отправленное
+      tags:
+      - Уведомления
+  /notifications/my:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка уведомлений текущего пользователя
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список уведомлений
+          schema:
+            properties:
+              notifications:
+                type: array
+              total_count:
+                type: integer
+              user_id:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Мои уведомления
+      tags:
+      - Уведомления
+  /notifications/recipient/{recipientId}:
+    get:
+      consumes:
+      - application/json
+      description: Получение всех уведомлений для конкретного получателя (административная
+        функция)
+      parameters:
+      - description: ID получателя
+        in: path
+        name: recipientId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список уведомлений
+          schema:
+            properties:
+              notifications:
+                type: array
+              total_count:
+                type: integer
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Получатель не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Уведомления по получателю
+      tags:
+      - Уведомления
+  /patients:
+    get:
+      consumes:
+      - application/json
+      description: Получение списка пациентов (только для врачей)
+      parameters:
+      - default: 10
+        description: Количество записей
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Смещение
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список пациентов
+          schema:
+            properties:
+              patients:
+                type: array
+              total:
+                type: integer
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Список пациентов
+      tags:
+      - Пациенты
+    post:
+      consumes:
+      - application/json
+      description: Создание нового профиля пациента
+      parameters:
+      - description: Данные пациента
+        in: body
+        name: patientData
+        required: true
+        schema:
+          properties:
+            birth_date:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Профиль создан
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Создать профиль пациента
+      tags:
+      - Пациенты
+  /patients/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Удаление профиля пациента из системы
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Пациент удален
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Пациент не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Удалить пациента
+      tags:
+      - Пациенты
+    get:
+      consumes:
+      - application/json
+      description: Получение детальной информации о пациенте
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные пациента
+          schema:
+            properties:
+              first_name:
+                type: string
+              id:
+                type: string
+              last_name:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Пациент не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Профиль пациента
+      tags:
+      - Пациенты
+    put:
+      consumes:
+      - application/json
+      description: Обновление существующего профиля пациента
+      parameters:
+      - description: ID пациента
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Обновленные данные
+        in: body
+        name: patientData
+        required: true
+        schema:
+          properties:
+            email:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль обновлен
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "403":
+          description: Нет прав доступа
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Пациент не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль пациента
+      tags:
+      - Пациенты
+  /public/{id}:
+    get:
+      consumes:
+      - application/json
+      description: Скачивание публично доступного файла (без авторизации)
+      parameters:
+      - description: ID файла
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: Содержимое файла
+          schema:
+            type: file
+        "404":
+          description: Файл не найден или не является публичным
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      summary: Скачать публичный файл
+      tags:
+      - Файлы
+  /users/{userID}/doctor:
+    get:
+      consumes:
+      - application/json
+      description: Получение профиля врача по идентификатору пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные врача
+          schema:
+            properties:
+              first_name:
+                type: string
+              id:
+                type: string
+              last_name:
+                type: string
+              specializations:
+                type: array
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Врач не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Профиль врача по User ID
+      tags:
+      - Врачи
+    put:
+      consumes:
+      - application/json
+      description: Обновление профиля врача по идентификатору пользователя (для второго
+        этапа регистрации)
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: Данные профиля
+        in: body
+        name: doctorData
+        required: true
+        schema:
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            specializations:
+              type: array
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль обновлен
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль врача (User ID)
+      tags:
+      - Врачи
+  /users/{userID}/patient:
+    get:
+      consumes:
+      - application/json
+      description: Получение профиля пациента по идентификатору пользователя
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userID
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные пациента
+          schema:
+            properties:
+              first_name:
+                type: string
+              id:
+                type: string
+              last_name:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "404":
+          description: Пациент не найден
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Профиль пациента по User ID
+      tags:
+      - Пациенты
+  /users/{userID}/patient/profile:
+    put:
+      consumes:
+      - application/json
+      description: Обновление профиля пациента по идентификатору пользователя (для
+        второго этапа регистрации)
+      parameters:
+      - description: ID пользователя
+        in: path
+        name: userID
+        required: true
+        type: string
+      - description: Данные профиля
+        in: body
+        name: patientData
+        required: true
+        schema:
+          properties:
+            birth_date:
+              type: string
+            first_name:
+              type: string
+            last_name:
+              type: string
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль обновлен
+          schema:
+            properties:
+              id:
+                type: string
+              message:
+                type: string
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "401":
+          description: Неавторизован
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+        "500":
+          description: Внутренняя ошибка
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль пациента (User ID)
+      tags:
+      - Пациенты
+securityDefinitions:
+  BearerAuth:
+    description: 'Введите JWT токен в формате: Bearer {ваш_токен}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

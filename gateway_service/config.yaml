@@ -1,0 +1,68 @@
+server:
+  host: 0.0.0.0
+  port: 8800 # Главный порт - единая точка входа для всех клиентов
+  read_timeout: 30s
+  write_timeout: 30s
+  shutdown_timeout: 10s
+
+# JWT настройки для валидации токенов (должны совпадать с identity_service)
+jwt:
+  secret: 4324pkh23sk4jh342alhdlfl2sdjf
+  expire: 168
+
+# Конфигурация микросервисов
+services:
+  identity:
+    url: http://identity_service:8801
+    timeout: 10s
+  
+  logger:
+    url: http://logger_service:8802
+    timeout: 5s
+  
+  specialist:
+    url: http://specialist_service:8803
+    timeout: 15s
+  
+  patient:
+    url: http://patient_service:8804
+    timeout: 15s
+  
+  appointment:
+    url: http://appointment_service:8805
+    timeout: 20s
+  
+  notification:
+    url: http://notification_service:8806
+    timeout: 10s
+  
+  fileserver:
+    url: http://fileserver_service:8087
+    timeout: 60s
+
+# Базовое логирование
+logging:
+  level: info
+
+# CORS настройки для фронтенда
+cors:
+  allowed_origins:
+    - "http://localhost:3000"    # React dev server
+    - "http://localhost:8080"    # Vue dev server
+    - "https://vitalem.kz"       # Production domain
+    - "https://app.vitalem.kz"   # Production app domain
+  allowed_methods:
+    - GET
+    - POST
+    - PUT
+    - PATCH
+    - DELETE
+    - OPTIONS
+  allowed_headers:
+    - Origin
+    - Content-Type
+    - Accept
+    - Authorization
+    - X-Requested-With
+  allow_credentials: true
+  max_age: 86400 # 24 часа 
