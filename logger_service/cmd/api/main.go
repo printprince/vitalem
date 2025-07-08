@@ -93,7 +93,7 @@ func main() {
 	handlers.RegisterRoutes(e, logService, logger)
 
 	// Защищенные маршруты (требуют JWT аутентификации)
-	protectedGroup := e.Group("/api/v1")
+	protectedGroup := e.Group("")
 	protectedGroup.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 
 	// Настройка защищенных маршрутов

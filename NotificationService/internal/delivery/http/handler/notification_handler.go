@@ -22,11 +22,11 @@ func NewNotificationHandler(s service.NotificationService) *NotificationHandler 
 
 // RegisterRoutes регистрирует маршруты в Echo группе
 func (h *NotificationHandler) RegisterRoutes(g *echo.Group) {
-	g.POST("/notifications", h.Create)
-	g.GET("/notifications/:id", h.GetByID)
-	g.GET("/notifications/recipient/:recipientId", h.ListByRecipient)
-	g.PUT("/notifications/:id/sent", h.MarkAsSent)
-	g.GET("/notifications/my", h.GetMyNotifications)
+	g.POST("", h.Create)
+	g.GET("/:id", h.GetByID)
+	g.GET("/recipient/:recipientId", h.ListByRecipient)
+	g.PUT("/:id/sent", h.MarkAsSent)
+	g.GET("/my", h.GetMyNotifications)
 }
 
 // CreateNotificationRequest — структура запроса для создания уведомления

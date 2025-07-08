@@ -10,7 +10,7 @@ jwt:
   secret: 4324pkh23sk4jh342alhdlfl2sdjf
   expire: 168
 
-# Конфигурация микросервисов
+# Конфигурация микросервисов - Docker service names
 services:
   identity:
     url: http://identity_service:8801

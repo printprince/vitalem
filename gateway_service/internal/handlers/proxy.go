@@ -107,80 +107,39 @@ func (p *ProxyHandler) proxyRequest(c echo.Context, serviceName string) error {
 func (p *ProxyHandler) buildTargetURL(c echo.Context, serviceURL, serviceName string) string {
 	path := c.Request().URL.Path
 
-	// Преобразуем простые Gateway пути в пути ожидаемые сервисами
+	// Теперь сервисы используют простые пути, поэтому минимальные преобразования
 	switch serviceName {
 	case "identity":
 		// Gateway: /auth/* → Identity: /auth/*
-		// Без изменений, Identity Service уже использует /auth/*
+		// Без изменений, Identity Service использует /auth/*
 
 	case "patient":
-		// Gateway: /patients/* → Patient: /api/v1/patients/*
-		if strings.HasPrefix(path, "/patients") {
-			path = "/api/v1" + path
-		} else if strings.HasPrefix(path, "/users/") && strings.Contains(path, "/patient") {
-			// Gateway: /users/:userID/patient/* → Patient: /api/v1/users/:userID/patient/*
-			path = "/api/v1" + path
-		}
+		// Gateway: /patients/* → Patient: /patients/*
+		// Gateway: /users/:userID/patient/* → Patient: /users/:userID/patient/*
+		// Без изменений, Patient Service теперь использует простые пути
 
 	case "specialist":
+		// Gateway: /doctors/* → Specialist: /doctors/* (защищенные)
 		// Gateway: /doctors/* → Specialist: /api/doctors/* (публичные)
-		// Gateway: /doctors/* → Specialist: /api/v1/doctors/* (защищенные)
 		if strings.HasPrefix(path, "/doctors") {
 			// Если у нас есть JWT токен в заголовках, то это защищенный роут
 			auth := c.Request().Header.Get("Authorization")
-			if auth != "" && strings.HasPrefix(auth, "Bearer ") {
-				path = "/api/v1" + path // Защищенные роуты
-			} else {
-				path = "/api" + path // Публичные роуты
+			if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
+				// Публичные роуты остаются с префиксом /api
+				path = "/api" + path
 			}
-		} else if strings.HasPrefix(path, "/users/") && strings.Contains(path, "/doctor") {
-			// Gateway: /users/:userID/doctor/* → Specialist: /api/v1/users/:userID/doctor/*
-			path = "/api/v1" + path
+			// Защищенные роуты без изменений
 		}
+		// Gateway: /users/:userID/doctor/* → Specialist: /users/:userID/doctor/*
+		// Без изменений
 
 	case "appointment":
-		// Gateway: /appointments/* → Appointment: /api/*
-		if strings.HasPrefix(path, "/appointments") {
-			// Специальная обработка для schedules (врачи)
-			if strings.Contains(path, "/schedules") {
-				path = strings.Replace(path, "/appointments/schedules", "/api/doctor/schedules", 1)
-			} else if strings.Contains(path, "/exceptions") {
-				// /appointments/exceptions → /api/doctor/exceptions
-				path = strings.Replace(path, "/appointments/exceptions", "/api/doctor/exceptions", 1)
-			} else if strings.Contains(path, "/doctors/") && strings.Contains(path, "/available-slots") {
-				// /appointments/doctors/123/available-slots → /api/doctors/123/available-slots
-				path = strings.Replace(path, "/appointments/doctors", "/api/doctors", 1)
-			} else if strings.Contains(path, "/book") {
-				// /appointments/123/book → /api/appointments/123/book
-				path = strings.Replace(path, "/appointments", "/api/appointments", 1)
-			} else if strings.Contains(path, "/cancel") {
-				// /appointments/123/cancel → /api/patient/appointments/123/cancel
-				appointmentID := strings.TrimPrefix(path, "/appointments/")
-				appointmentID = strings.TrimSuffix(appointmentID, "/cancel")
-				path = "/api/patient/appointments/" + appointmentID + "/cancel"
-			} else {
-				// Остальные /appointments/* → /api/*
-				path = strings.Replace(path, "/appointments", "/api", 1)
-			}
-		}
+		// Gateway: /appointments/* → Appointment: /appointments/*
+		// Без изменений, Appointment Service теперь использует простые пути
 
 	case "notification":
-		// Gateway: /notifications/* → Notification: /api/v1/notifications/* или /notifications/*
-		if strings.HasPrefix(path, "/notifications") {
-			if strings.HasPrefix(path, "/notifications/my") {
-				// /notifications/my → /notifications/my (прямой маршрут)
-				// Оставляем как есть
-			} else if strings.Contains(path, "/sent") {
-				// /notifications/123/sent → /notifications/123/sent (прямой маршрут)
-				// Оставляем как есть
-			} else if strings.Contains(path, "/recipient/") {
-				// /notifications/recipient/123 → /api/v1/notifications/recipient/123
-				path = "/api/v1" + path
-			} else {
-				// Остальные /notifications/* → /api/v1/notifications/*
-				path = "/api/v1" + path
-			}
-		}
+		// Gateway: /notifications/* → Notification: /notifications/*
+		// Без изменений, Notification Service теперь использует простые пути
 
 	case "fileserver":
 		// Gateway: /files/* → FileServer: /files/*

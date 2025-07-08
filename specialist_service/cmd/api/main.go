@@ -200,7 +200,7 @@ func main() {
 	doctorHandlers.RegisterRoutes(e)
 
 	// Защищенные маршруты (требуют JWT аутентификации)
-	protectedGroup := e.Group("/api/v1")
+	protectedGroup := e.Group("")
 
 	// Debug: выводим информацию о JWT секрете
 	if loggerClient != nil {

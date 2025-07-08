@@ -202,7 +202,7 @@ func main() {
 	patientHandlers.RegisterPublicRoutes(publicRoutes)
 
 	// Настройка защищенных маршрутов
-	protectedRoutes := e.Group("/api/v1")
+	protectedRoutes := e.Group("")
 	protectedRoutes.Use(middleware.JWTMiddleware(cfg.JWT.Secret))
 	patientHandlers.RegisterProtectedRoutes(protectedRoutes)
 

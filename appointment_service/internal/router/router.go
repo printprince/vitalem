@@ -1,6 +1,8 @@
 package router
 
 import (
+	"net/http"
+
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/printprince/vitalem/appointment_service/internal/handlers"
@@ -21,53 +23,68 @@ func SetupRoutes(e *echo.Echo, handler *handlers.AppointmentHandler, jwtSecret s
 	// Health check (без авторизации)
 	e.GET("/health", handler.HealthCheck)
 
-	// Основная API группа
-	api := e.Group("/api")
-	api.Use(utilsMiddleware.JWTMiddleware(jwtSecret))
+	// Основная группа с JWT middleware
+	protected := e.Group("")
+	protected.Use(utilsMiddleware.JWTMiddleware(jwtSecret))
 
 	// Doctor routes (только для врачей)
-	doctor := api.Group("/doctor")
+	doctor := protected.Group("/appointments/schedules")
 	doctor.Use(utilsMiddleware.RequireDoctor())
 	{
 		// Schedule management - только врачи могут управлять расписанием
-		doctor.POST("/schedules", handler.CreateSchedule)                       // Создать расписание
-		doctor.GET("/schedules", handler.GetDoctorSchedules)                    // Получить все расписания
-		doctor.PUT("/schedules/:id", handler.UpdateSchedule)                    // Обновить расписание
-		doctor.DELETE("/schedules/:id", handler.DeleteSchedule)                 // Удалить расписание
-		doctor.PATCH("/schedules/:id/toggle", handler.ToggleSchedule)           // Активировать/деактивировать
-		doctor.POST("/schedules/:id/generate-slots", handler.GenerateSlots)     // Генерация слотов
-		doctor.DELETE("/schedules/:id/slots", handler.DeleteScheduleSlots)      // Удалить слоты расписания
-		doctor.GET("/schedules/:id/generated-slots", handler.GetGeneratedSlots) // Получить детали сгенерированных слотов
-
-		// Doctor's appointments - врач видит свои записи
-		doctor.GET("/appointments", handler.GetDoctorAppointments)        // Все записи врача
-		doctor.GET("/appointments/:id", handler.GetDoctorAppointmentByID) // Конкретная запись по ID
-
-		// Exception management - только врачи могут создавать исключения
-		doctor.POST("/exceptions", handler.AddException)
-		doctor.GET("/exceptions", handler.GetDoctorExceptions)
+		doctor.POST("", handler.CreateSchedule)                       // Создать расписание
+		doctor.GET("", handler.GetDoctorSchedules)                    // Получить все расписания
+		doctor.PUT("/:id", handler.UpdateSchedule)                    // Обновить расписание
+		doctor.DELETE("/:id", handler.DeleteSchedule)                 // Удалить расписание
+		doctor.PATCH("/:id/toggle", handler.ToggleSchedule)           // Активировать/деактивировать
+		doctor.POST("/:id/generate-slots", handler.GenerateSlots)     // Генерация слотов
+		doctor.DELETE("/:id/slots", handler.DeleteScheduleSlots)      // Удалить слоты расписания
+		doctor.GET("/:id/generated-slots", handler.GetGeneratedSlots) // Получить детали сгенерированных слотов
 	}
 
-	// Patient routes (только для пациентов)
-	patient := api.Group("/patient")
-	patient.Use(utilsMiddleware.RequirePatient())
+	// Doctor exceptions (только для врачей)
+	doctorExceptions := protected.Group("/appointments/exceptions")
+	doctorExceptions.Use(utilsMiddleware.RequireDoctor())
 	{
-		// Patient's appointments - пациент видит свои записи
-		patient.GET("/appointments", handler.GetPatientAppointments)        // Все записи пациента
-		patient.GET("/appointments/:id", handler.GetPatientAppointmentByID) // Конкретная запись по ID
-
-		// Patient can cancel their own appointments
-		patient.POST("/appointments/:id/cancel", handler.CancelAppointment)
+		doctorExceptions.POST("", handler.AddException)
+		doctorExceptions.GET("", handler.GetDoctorExceptions)
 	}
 
-	// Public routes (для всех авторизованных пользователей - врачей и пациентов)
-	public := api.Group("")
-	public.Use(utilsMiddleware.RequireDoctorOrPatient())
+	// All appointments (для всех авторизованных пользователей)
+	// Врачи видят свои записи, пациенты - свои записи
+	appointments := protected.Group("/appointments")
+	appointments.Use(utilsMiddleware.RequireDoctorOrPatient())
 	{
-		// View available slots - все могут видеть доступные слоты
-		public.GET("/doctors/:id/available-slots", handler.GetAvailableSlots)
+		appointments.GET("", func(c echo.Context) error {
+			// Проверяем роль пользователя
+			role, ok := c.Get("role").(string)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Role not found")
+			}
 
-		// Appointment booking - пациенты бронируют
-		public.POST("/appointments/:id/book", handler.BookAppointment)
+			if role == "doctor" {
+				return handler.GetDoctorAppointments(c)
+			} else {
+				return handler.GetPatientAppointments(c)
+			}
+		})
+
+		appointments.GET("/:id", func(c echo.Context) error {
+			// Проверяем роль пользователя
+			role, ok := c.Get("role").(string)
+			if !ok {
+				return echo.NewHTTPError(http.StatusUnauthorized, "Role not found")
+			}
+
+			if role == "doctor" {
+				return handler.GetDoctorAppointmentByID(c)
+			} else {
+				return handler.GetPatientAppointmentByID(c)
+			}
+		})
+
+		appointments.POST("/:id/book", handler.BookAppointment)                     // Бронирование записи
+		appointments.POST("/:id/cancel", handler.CancelAppointment)                 // Отмена записи
+		appointments.GET("/doctors/:id/available-slots", handler.GetAvailableSlots) // Доступные слоты
 	}
 }
